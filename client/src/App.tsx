@@ -17,6 +17,8 @@ function App() {
         <Route path="/discover" element={<DiscoverPage />} />
 
         <Route path="/library" element={<LibraryPage />} />
+                
+        <Route path="/book/google/:externalId" element={<BookPage />}/>
 
         <Route path="/book/:id" element={<BookPage />} />
 
