@@ -1,0 +1,206 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ReadingGoalType {
+  BOOKS
+  PAGES
+  MINUTES
+}
+
+enum ReadingStatus {
+  WANT_TO_READ
+  READING
+  ON_HOLD
+  COMPLETED
+  DROPPED
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  bio          String?
+  avatarUrl    String?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  libraryEntries LibraryEntry[]
+  reviews Review[]
+  readingSessions ReadingSession[]
+  shelves Shelf[]
+  readingGoals ReadingGoal[]
+  quotes Quote[]
+}
+
+model Book {
+  id                String   @id @default(uuid())
+
+  externalId        String
+  source            String
+
+  title             String
+  author            String
+  description       String?
+  coverUrl          String?
+
+  pageCount         Int?
+  publishedAt       DateTime?
+  isbn              String?
+  language          String?
+  publisher         String?
+
+  externalRating    Float?
+  externalRatingCount Int?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  libraryEntries LibraryEntry[]
+  reviews Review[]
+  readingSessions ReadingSession[]
+  shelves ShelfBook[]
+  quotes Quote[]
+
+  @@unique([source, externalId])
+  @@index([title])
+  @@index([author])
+}
+
+model LibraryEntry {
+  id          String        @id @default(uuid())
+
+  status      ReadingStatus @default(WANT_TO_READ)
+  currentPage Int           @default(0)
+
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  addedAt     DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  userId      String
+  bookId      String
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book        Book          @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bookId])
+  @@index([userId, status])
+}
+
+model Review {
+  id        String   @id @default(uuid())
+
+  rating    Int
+  content   String?
+  spoiler   Boolean  @default(false)
+
+  userId    String
+  bookId    String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bookId])
+  @@index([bookId])
+}
+
+model ReadingSession {
+  id             String   @id @default(uuid())
+
+  startedAt      DateTime
+  endedAt        DateTime?
+  durationMinutes Int?
+  
+  startPage      Int?
+  endPage        Int?
+  pagesRead      Int?
+
+  userId         String
+  bookId         String
+
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book           Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime @default(now())
+
+  @@index([userId, startedAt])
+  @@index([bookId, startedAt])
+}
+
+model Shelf {
+  id        String   @id @default(uuid())
+  name      String
+
+  userId    String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  books     ShelfBook[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model ShelfBook {
+  shelfId String
+  bookId  String
+
+  addedAt DateTime @default(now())
+
+  shelf Shelf @relation(fields: [shelfId], references: [id], onDelete: Cascade)
+  book  Book  @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@id([shelfId, bookId])
+  @@index([bookId])
+}
+
+model ReadingGoal {
+  id        String          @id @default(uuid())
+
+  type      ReadingGoalType
+  target    Int
+
+  startDate DateTime
+  endDate   DateTime
+
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([userId, startDate, endDate])
+}
+
+model Quote {
+  id        String   @id @default(uuid())
+
+  text      String
+  page      Int?
+  spoiler   Boolean  @default(false)
+
+  userId    String
+  bookId    String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([bookId])
+}
