@@ -2,6 +2,9 @@ import cors from "cors";
 import express from "express";
 import { prisma } from "./config/prisma.js";
 import bookRoutes from "./routes/book.routes.js";
+import authRoutes from "./routes/auth.routes.js";
+import libraryRoutes from "./routes/library.routes.js";
+import cookieParser from "cookie-parser";
 
 const app = express();
 
@@ -13,7 +16,11 @@ app.use(
 );
 
 app.use(express.json());
+app.use(cookieParser());
+
 app.use("/api/books", bookRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/library", libraryRoutes);
 
 app.get("/api/health", (_req, res) => {
   res.json({

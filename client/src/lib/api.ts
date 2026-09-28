@@ -23,10 +23,23 @@ export interface Book {
   externalRatingCount?: number;
 }
 
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  bio?: string | null;
+  avatarUrl?: string | null;
+}
+
 interface ApiResponse<T> {
   success: boolean;
   data: T;
 }
+
+interface AuthResponse {
+  user: User;
+}
+
 
 export async function searchBooks(
   query: string,
@@ -35,12 +48,16 @@ export async function searchBooks(
     `${API_URL}/books/search?query=${encodeURIComponent(query)}`,
   );
 
-  if (!response.ok) {
-    throw new Error("Failed to search books");
-  }
-
   const result =
     (await response.json()) as ApiResponse<Book[]>;
+
+  if (!response.ok) {
+    throw new Error(
+      result.success
+        ? "Failed to search books"
+        : "Failed to search books",
+    );
+  }
 
   return result.data;
 }
@@ -52,12 +69,150 @@ export async function getBookByGoogleId(
     `${API_URL}/books/google/${encodeURIComponent(externalId)}`,
   );
 
-  if (!response.ok) {
-    throw new Error("Failed to fetch book");
-  }
-
   const result =
     (await response.json()) as ApiResponse<Book>;
 
+  if (!response.ok) {
+    throw new Error(
+      result.success
+        ? "Failed to fetch book"
+        : "Failed to fetch book",
+    );
+  }
+
   return result.data;
+}
+
+
+export async function registerUser(data: {
+  name: string;
+  email: string;
+  password: string;
+}): Promise<AuthResponse> {
+  const response = await fetch(
+    `${API_URL}/auth/register`,
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+      },
+
+      credentials: "include",
+
+      body: JSON.stringify(data),
+    },
+  );
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ?? "Failed to register",
+    );
+  }
+
+  return result.data;
+}
+
+export async function loginUser(data: {
+  email: string;
+  password: string;
+}): Promise<AuthResponse> {
+  const response = await fetch(
+    `${API_URL}/auth/login`,
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+      },
+
+      credentials: "include",
+
+      body: JSON.stringify(data),
+    },
+  );
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ?? "Failed to login",
+    );
+  }
+
+  return result.data;
+}
+
+
+export async function addBookToLibrary(
+  bookId: string,
+  status = "WANT_TO_READ",
+) {
+  const response = await fetch(
+    `${API_URL}/library`,
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+      },
+
+      credentials: "include",
+
+      body: JSON.stringify({
+        bookId,
+        status,
+      }),
+    },
+  );
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ??
+        "Failed to add book to library",
+    );
+  }
+
+  return result.data;
+}
+
+export async function getCurrentUser(): Promise<User> {
+  const response = await fetch(
+    `${API_URL}/auth/me`,
+    {
+      credentials: "include",
+    },
+  );
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ?? "Failed to fetch current user",
+    );
+  }
+
+  return result.data;
+}
+
+export async function logoutUser(): Promise<void> {
+  const response = await fetch(
+    `${API_URL}/auth/logout`,
+    {
+      method: "POST",
+      credentials: "include",
+    },
+  );
+
+  if (!response.ok) {
+    const result = await response.json();
+
+    throw new Error(
+      result.message ?? "Failed to logout",
+    );
+  }
 }

@@ -10,9 +10,12 @@ import {
   useLocation,
 } from "react-router-dom";
 
+import { useAuth } from "@/context/AuthContext";
+
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const { user, isLoading } = useAuth();
 
   const isActive = (path: string) => {
     if (path === "/") {
@@ -90,12 +93,29 @@ export function Navbar() {
                 <Search className="size-4" />
               </button>
 
-              <Link
-                to="/discover"
-                className="rounded-xl bg-[#f5f2ea] px-4 py-2 text-sm font-medium text-[#11110f] transition-all duration-300 hover:scale-[1.02] hover:bg-white"
-              >
-                Get started
-              </Link>
+              {!isLoading && (
+                user ? (
+                  <Link
+                    to="/profile"
+                    className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 transition-all duration-300 hover:border-white/[0.15] hover:bg-white/[0.06]"
+                  >
+                    <div className="flex size-7 items-center justify-center rounded-lg bg-[#c4a46a]/15 text-xs font-medium text-[#c4a46a]">
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+
+                    <span className="max-w-24 truncate text-sm text-white/75">
+                      {user.name}
+                    </span>
+                  </Link>
+                ) : (
+                  <Link
+                    to="/auth"
+                    className="rounded-xl bg-[#f5f2ea] px-4 py-2 text-sm font-medium text-[#11110f] transition-all duration-300 hover:scale-[1.02] hover:bg-white"
+                  >
+                    Get started
+                  </Link>
+                )
+              )}
             </div>
 
             {/* ─────────────────────────────────────────
@@ -168,13 +188,29 @@ export function Navbar() {
                   Settings
                 </MobileNavLink>
 
-                <Link
-                  to="/discover"
-                  onClick={closeMobileMenu}
-                  className="mt-3 flex items-center justify-center rounded-xl bg-[#f5f2ea] px-4 py-3 text-sm font-medium text-[#11110f] transition-all duration-300 hover:bg-white"
-                >
-                  Start exploring
-                </Link>
+                {!isLoading && (
+                  user ? (
+                    <Link
+                      to="/profile"
+                      onClick={closeMobileMenu}
+                      className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm font-medium text-white transition-all duration-300 hover:bg-white/[0.06]"
+                    >
+                      <div className="flex size-6 items-center justify-center rounded-lg bg-[#c4a46a]/15 text-xs text-[#c4a46a]">
+                        {user.name.charAt(0).toUpperCase()}
+                      </div>
+
+                      View profile
+                    </Link>
+                  ) : (
+                    <Link
+                      to="/auth"
+                      onClick={closeMobileMenu}
+                      className="mt-3 flex items-center justify-center rounded-xl bg-[#f5f2ea] px-4 py-3 text-sm font-medium text-[#11110f] transition-all duration-300 hover:bg-white"
+                    >
+                      Start exploring
+                    </Link>
+                  )
+                )}
               </div>
             </div>
           )}
