@@ -6,17 +6,28 @@ import {
   Loader2,
 } from "lucide-react";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 
 import { useAuth } from "@/context/AuthContext";
 
 type AuthMode = "login" | "register";
 
+interface AuthLocationState {
+  from?: string;
+}
+
 export default function AuthPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+
   const { login, register } = useAuth();
 
-  const [mode, setMode] = useState<AuthMode>("login");
+  const [mode, setMode] =
+    useState<AuthMode>("login");
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -31,6 +42,12 @@ export default function AuthPage() {
   const [error, setError] = useState("");
 
   const isRegister = mode === "register";
+
+  const locationState =
+    location.state as AuthLocationState | null;
+
+  const redirectTo =
+    locationState?.from ?? "/discover";
 
   function switchMode(nextMode: AuthMode) {
     setMode(nextMode);
@@ -73,10 +90,15 @@ export default function AuthPage() {
           password,
         );
       } else {
-        await login(trimmedEmail, password);
+        await login(
+          trimmedEmail,
+          password,
+        );
       }
 
-      navigate("/discover", { replace: true });
+      navigate(redirectTo, {
+        replace: true,
+      });
     } catch (error) {
       setError(
         error instanceof Error
@@ -96,6 +118,7 @@ export default function AuthPage() {
         className="pointer-events-none absolute inset-0"
       >
         <div className="absolute left-[15%] top-[15%] size-72 rounded-full bg-[#c4a46a]/[0.045] blur-3xl" />
+
         <div className="absolute bottom-[10%] right-[10%] size-80 rounded-full bg-[#6e5aa0]/[0.035] blur-3xl" />
       </div>
 
@@ -137,7 +160,9 @@ export default function AuthPage() {
           <div className="mb-7 grid grid-cols-2 rounded-xl border border-white/[0.07] bg-black/20 p-1">
             <button
               type="button"
-              onClick={() => switchMode("login")}
+              onClick={() =>
+                switchMode("login")
+              }
               className={`rounded-lg py-2.5 text-sm transition-all duration-300 ${
                 !isRegister
                   ? "bg-white/[0.08] text-white shadow-sm"
@@ -149,7 +174,9 @@ export default function AuthPage() {
 
             <button
               type="button"
-              onClick={() => switchMode("register")}
+              onClick={() =>
+                switchMode("register")
+              }
               className={`rounded-lg py-2.5 text-sm transition-all duration-300 ${
                 isRegister
                   ? "bg-white/[0.08] text-white shadow-sm"
@@ -215,7 +242,9 @@ export default function AuthPage() {
                   }
                   value={password}
                   onChange={(event) =>
-                    setPassword(event.target.value)
+                    setPassword(
+                      event.target.value,
+                    )
                   }
                   placeholder="••••••••"
                   autoComplete={
@@ -265,6 +294,7 @@ export default function AuthPage() {
               {isSubmitting ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
+
                   {isRegister
                     ? "Creating account..."
                     : "Signing in..."}

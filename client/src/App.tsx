@@ -2,6 +2,7 @@ import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 
 import { AuthProvider } from "@/context/AuthContext";
 import { Navbar } from "@/components/layout/Navbar";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 import AuthPage from "@/pages/AuthPage";
 import LandingPage from "@/pages/LandingPage";
@@ -22,9 +23,13 @@ function AppContent() {
       {!isAuthPage && <Navbar />}
 
       <Routes>
+
         <Route path="/" element={<LandingPage />} />
-        <Route path="/discover" element={<DiscoverPage />} />
-        <Route path="/library" element={<LibraryPage />} />
+
+        <Route
+          path="/discover"
+          element={<DiscoverPage />}
+        />
 
         <Route
           path="/book/google/:externalId"
@@ -36,11 +41,32 @@ function AppContent() {
           element={<BookPage />}
         />
 
-        <Route path="/stats" element={<StatsPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/settings" element={<SettingsPage />} />
+        <Route
+          path="/auth"
+          element={<AuthPage />}
+        />
 
-        <Route path="/auth" element={<AuthPage />} />
+        <Route element={<ProtectedRoute />}>
+          <Route
+            path="/library"
+            element={<LibraryPage />}
+          />
+
+          <Route
+            path="/stats"
+            element={<StatsPage />}
+          />
+
+          <Route
+            path="/profile"
+            element={<ProfilePage />}
+          />
+
+          <Route
+            path="/settings"
+            element={<SettingsPage />}
+          />
+        </Route>
       </Routes>
     </>
   );
