@@ -6,25 +6,46 @@ import {
   Star,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import {
+  Link,
+  useParams,
+} from "react-router-dom";
 
 import {
   getBookByGoogleId,
+  getBookById,
+  getLibraryEntry,
   type Book,
 } from "@/lib/api";
 
+import type { LibraryEntry } from "@/types/library";
+
 export default function BookPage() {
-  const { externalId } = useParams<{
-    externalId: string;
+  const {
+    id,
+    externalId,
+  } = useParams<{
+    id?: string;
+    externalId?: string;
   }>();
 
-  const [book, setBook] = useState<Book | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [book, setBook] =
+    useState<Book | null>(null);
+
+  const [libraryEntry, setLibraryEntry] =
+    useState<LibraryEntry | null>(null);
+
+  const [isLoading, setIsLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState("");
 
   useEffect(() => {
+    let isMounted = true;
+
     async function loadBook() {
-      if (!externalId) {
+      if (!id && !externalId) {
         setError("Book not found");
         setIsLoading(false);
         return;
@@ -34,49 +55,69 @@ export default function BookPage() {
         setIsLoading(true);
         setError("");
 
-        const result =
-          await getBookByGoogleId(externalId);
+        /*
+         * Load the actual book independently
+         * from the user's library state.
+         */
+        const loadedBook = id
+          ? await getBookById(id)
+          : await getBookByGoogleId(
+              externalId!,
+            );
 
-        setBook(result);
+        if (!isMounted) {
+          return;
+        }
+
+        setBook(loadedBook);
+
+        /*
+         * Library membership is separate from
+         * book information.
+         *
+         * A 404 simply means the user hasn't
+         * added this book to their library.
+         */
+        if (loadedBook.id) {
+          const entry =
+            await getLibraryEntry(
+              loadedBook.id,
+            );
+
+          if (isMounted) {
+            setLibraryEntry(entry);
+          }
+        }
       } catch (error) {
-        console.error("Failed to load book:", error);
+        if (!isMounted) {
+          return;
+        }
+
+        console.error(
+          "Failed to load book:",
+          error,
+        );
 
         setError(
           "We couldn't load this book. Please try again.",
         );
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     }
 
     loadBook();
-  }, [externalId]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id, externalId]);
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#09090b] text-[#f5f2ea]">
-        <main className="mx-auto max-w-6xl px-4 pb-24 pt-32 sm:px-6 lg:px-8">
-          <div className="animate-pulse">
-            <div className="h-5 w-32 rounded bg-white/[0.05]" />
-
-            <div className="mt-10 grid gap-10 lg:grid-cols-[280px_1fr] lg:gap-16">
-              <div className="aspect-[2/3] rounded-2xl bg-white/[0.04]" />
-
-              <div className="flex flex-col justify-center">
-                <div className="h-3 w-20 rounded bg-white/[0.05]" />
-
-                <div className="mt-5 h-16 max-w-xl rounded bg-white/[0.05]" />
-
-                <div className="mt-4 h-5 w-40 rounded bg-white/[0.04]" />
-
-                <div className="mt-8 h-5 w-72 rounded bg-white/[0.04]" />
-
-                <div className="mt-8 h-24 max-w-2xl rounded bg-white/[0.04]" />
-              </div>
-            </div>
-          </div>
-        </main>
-      </div>
+      <BookPageSkeleton />
     );
   }
 
@@ -85,11 +126,18 @@ export default function BookPage() {
       <div className="min-h-screen bg-[#09090b] text-[#f5f2ea]">
         <main className="mx-auto max-w-6xl px-4 pb-24 pt-32 sm:px-6 lg:px-8">
           <Link
-            to="/discover"
+            to={
+              id
+                ? "/library"
+                : "/discover"
+            }
             className="inline-flex items-center gap-2 text-sm text-white/30 transition-colors hover:text-white"
           >
             <ArrowLeft className="size-4" />
-            Back to discover
+
+            {id
+              ? "Back to library"
+              : "Back to discover"}
           </Link>
 
           <div className="mt-20 text-center">
@@ -98,7 +146,8 @@ export default function BookPage() {
             </h1>
 
             <p className="mt-3 text-sm text-white/30">
-              We couldn't find the book you're looking for.
+              We couldn't find the book you're
+              looking for.
             </p>
           </div>
         </main>
@@ -106,19 +155,29 @@ export default function BookPage() {
     );
   }
 
-  const publishedYear = book.publishedAt
-    ? new Date(book.publishedAt).getFullYear()
-    : null;
+  const publishedYear =
+    book.publishedAt
+      ? new Date(
+          book.publishedAt,
+        ).getFullYear()
+      : null;
 
   return (
     <div className="min-h-screen bg-[#09090b] text-[#f5f2ea]">
       <main className="mx-auto max-w-6xl px-4 pb-24 pt-32 sm:px-6 lg:px-8">
         <Link
-          to="/discover"
+          to={
+            id
+              ? "/library"
+              : "/discover"
+          }
           className="inline-flex items-center gap-2 text-sm text-white/30 transition-colors hover:text-white"
         >
           <ArrowLeft className="size-4" />
-          Back to discover
+
+          {id
+            ? "Back to library"
+            : "Back to discover"}
         </Link>
 
         <div className="mt-10 grid gap-10 lg:grid-cols-[280px_1fr] lg:gap-16">
@@ -158,7 +217,9 @@ export default function BookPage() {
                 <>
                   <span className="flex items-center gap-1.5 text-[#c4a46a]">
                     <Star className="size-4 fill-current" />
-                    {book.externalRating.toFixed(1)}
+                    {book.externalRating.toFixed(
+                      1,
+                    )}
                   </span>
 
                   <span className="text-white/20">
@@ -192,13 +253,26 @@ export default function BookPage() {
               </p>
             )}
 
+            {/* Library actions */}
             <div className="mt-9 flex flex-wrap gap-3">
-              <button className="rounded-xl bg-[#f5f2ea] px-6 py-3 text-sm font-medium text-[#11110f]">
-                Add to library
-              </button>
+              {libraryEntry ? (
+                <div className="rounded-xl border border-[#c4a46a]/20 bg-[#c4a46a]/10 px-6 py-3 text-sm font-medium text-[#c4a46a]">
+                  {getStatusLabel(
+                    libraryEntry.status,
+                  )}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="rounded-xl bg-[#f5f2ea] px-6 py-3 text-sm font-medium text-[#11110f] transition-colors hover:bg-white"
+                >
+                  Add to library
+                </button>
+              )}
 
               <button
                 type="button"
+                aria-label="Add to favorites"
                 className="flex size-11 items-center justify-center rounded-xl border border-white/[0.08] text-white/50 transition-colors hover:bg-white/[0.04] hover:text-white"
               >
                 <Heart className="size-4" />
@@ -206,6 +280,7 @@ export default function BookPage() {
 
               <button
                 type="button"
+                aria-label="Bookmark book"
                 className="flex size-11 items-center justify-center rounded-xl border border-white/[0.08] text-white/50 transition-colors hover:bg-white/[0.04] hover:text-white"
               >
                 <Bookmark className="size-4" />
@@ -213,17 +288,39 @@ export default function BookPage() {
 
               <button
                 type="button"
+                aria-label="More actions"
                 className="flex size-11 items-center justify-center rounded-xl border border-white/[0.08] text-white/50 transition-colors hover:bg-white/[0.04] hover:text-white"
               >
                 <MoreHorizontal className="size-4" />
               </button>
             </div>
 
+            {/* Reading progress */}
+            {libraryEntry &&
+              libraryEntry.status ===
+                "READING" &&
+              book.pageCount ? (
+              <ReadingProgress
+                currentPage={
+                  libraryEntry.currentPage
+                }
+                pageCount={
+                  book.pageCount
+                }
+              />
+            ) : null}
+
             {/* Metadata */}
             <div className="mt-12 grid max-w-2xl grid-cols-2 gap-4 sm:grid-cols-4">
               <Meta
                 label="Published"
-                value={book.publishedAt ?? "Unknown"}
+                value={
+                  book.publishedAt
+                    ? new Date(
+                        book.publishedAt,
+                      ).toLocaleDateString()
+                    : "Unknown"
+                }
               />
 
               <Meta
@@ -245,8 +342,101 @@ export default function BookPage() {
 
               <Meta
                 label="ISBN"
-                value={book.isbn ?? "Unknown"}
+                value={
+                  book.isbn ?? "Unknown"
+                }
               />
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function getStatusLabel(
+  status: LibraryEntry["status"],
+) {
+  switch (status) {
+    case "WANT_TO_READ":
+      return "Want to Read";
+
+    case "READING":
+      return "Reading";
+
+    case "ON_HOLD":
+      return "On Hold";
+
+    case "COMPLETED":
+      return "Completed";
+
+    case "DROPPED":
+      return "Dropped";
+  }
+}
+
+function ReadingProgress({
+  currentPage,
+  pageCount,
+}: {
+  currentPage: number;
+  pageCount: number;
+}) {
+  const percentage = Math.min(
+    100,
+    Math.round(
+      (currentPage / pageCount) * 100,
+    ),
+  );
+
+  return (
+    <div className="mt-8 max-w-2xl rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-white/60">
+          Reading progress
+        </p>
+
+        <p className="text-sm text-[#c4a46a]">
+          {percentage}%
+        </p>
+      </div>
+
+      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
+        <div
+          className="h-full rounded-full bg-[#c4a46a] transition-all duration-500"
+          style={{
+            width: `${percentage}%`,
+          }}
+        />
+      </div>
+
+      <p className="mt-2 text-xs text-white/30">
+        {currentPage} of {pageCount} pages
+      </p>
+    </div>
+  );
+}
+
+function BookPageSkeleton() {
+  return (
+    <div className="min-h-screen bg-[#09090b] text-[#f5f2ea]">
+      <main className="mx-auto max-w-6xl px-4 pb-24 pt-32 sm:px-6 lg:px-8">
+        <div className="animate-pulse">
+          <div className="h-5 w-32 rounded bg-white/[0.05]" />
+
+          <div className="mt-10 grid gap-10 lg:grid-cols-[280px_1fr] lg:gap-16">
+            <div className="aspect-[2/3] rounded-2xl bg-white/[0.04]" />
+
+            <div className="flex flex-col justify-center">
+              <div className="h-3 w-20 rounded bg-white/[0.05]" />
+
+              <div className="mt-5 h-16 max-w-xl rounded bg-white/[0.05]" />
+
+              <div className="mt-4 h-5 w-40 rounded bg-white/[0.04]" />
+
+              <div className="mt-8 h-5 w-72 rounded bg-white/[0.04]" />
+
+              <div className="mt-8 h-24 max-w-2xl rounded bg-white/[0.04]" />
             </div>
           </div>
         </div>

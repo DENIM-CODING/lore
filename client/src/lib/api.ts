@@ -2,6 +2,11 @@ const API_URL =
   import.meta.env.VITE_API_URL ??
   "http://localhost:5001/api";
 
+import type {
+  LibraryEntry,
+  ReadingStatus,
+} from "@/types/library";
+
 export interface Book {
   id: string;
   externalId: string;
@@ -77,6 +82,27 @@ export async function getBookByGoogleId(
       result.success
         ? "Failed to fetch book"
         : "Failed to fetch book",
+    );
+  }
+
+  return result.data;
+}
+
+export async function getBookById(
+  id: string,
+): Promise<Book> {
+  const response = await fetch(
+    `${API_URL}/books/${encodeURIComponent(id)}`,
+    {
+      credentials: "include",
+    },
+  );
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ?? "Failed to fetch book",
     );
   }
 
@@ -174,6 +200,121 @@ export async function addBookToLibrary(
     throw new Error(
       result.message ??
         "Failed to add book to library",
+    );
+  }
+
+  return result.data;
+}
+
+export async function getUserLibrary(
+  status?: ReadingStatus,
+): Promise<LibraryEntry[]> {
+  const searchParams = new URLSearchParams();
+
+  if (status) {
+    searchParams.set("status", status);
+  }
+
+  const queryString = searchParams.toString();
+
+  const response = await fetch(
+    `${API_URL}/library${
+      queryString ? `?${queryString}` : ""
+    }`,
+    {
+      credentials: "include",
+    },
+  );
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ??
+        "Failed to fetch library",
+    );
+  }
+
+  return result.data;
+}
+
+export async function updateLibraryEntry(
+  bookId: string,
+  data: {
+    status?: ReadingStatus;
+    currentPage?: number;
+    startedAt?: string | null;
+    finishedAt?: string | null;
+  },
+): Promise<LibraryEntry> {
+  const response = await fetch(
+    `${API_URL}/library/${encodeURIComponent(bookId)}`,
+    {
+      method: "PATCH",
+
+      headers: {
+        "Content-Type": "application/json",
+      },
+
+      credentials: "include",
+
+      body: JSON.stringify(data),
+    },
+  );
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ??
+        "Failed to update library entry",
+    );
+  }
+
+  return result.data;
+}
+
+export async function removeBookFromLibrary(
+  bookId: string,
+): Promise<void> {
+  const response = await fetch(
+    `${API_URL}/library/${encodeURIComponent(bookId)}`,
+    {
+      method: "DELETE",
+      credentials: "include",
+    },
+  );
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ??
+        "Failed to remove book from library",
+    );
+  }
+}
+
+export async function getLibraryEntry(
+  bookId: string,
+): Promise<LibraryEntry | null> {
+  const response = await fetch(
+    `${API_URL}/library/${encodeURIComponent(bookId)}`,
+    {
+      credentials: "include",
+    },
+  );
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ??
+        "Failed to fetch library entry",
     );
   }
 
