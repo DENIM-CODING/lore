@@ -12,6 +12,7 @@ import {
 } from "react-router-dom";
 
 import {
+  addBookToLibrary,
   getBookByGoogleId,
   getBookById,
   getLibraryEntry,
@@ -28,6 +29,12 @@ export default function BookPage() {
     id?: string;
     externalId?: string;
   }>();
+
+  const [isAddingToLibrary, setIsAddingToLibrary] =
+  useState(false);
+
+  const [actionError, setActionError] =
+    useState<string | null>(null);
 
   const [book, setBook] =
     useState<Book | null>(null);
@@ -114,6 +121,36 @@ export default function BookPage() {
       isMounted = false;
     };
   }, [id, externalId]);
+
+  async function handleAddToLibrary() {
+    if (!book || libraryEntry || isAddingToLibrary) {
+      return;
+    }
+
+    try {
+      setIsAddingToLibrary(true);
+      setActionError(null);
+
+      const entry = await addBookToLibrary(
+        book.id,
+      );
+
+      setLibraryEntry(entry);
+    } catch (error) {
+      console.error(
+        "Failed to add book to library:",
+        error,
+      );
+
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : "Failed to add book to library",
+      );
+    } finally {
+      setIsAddingToLibrary(false);
+    }
+  }
 
   if (isLoading) {
     return (
@@ -254,46 +291,57 @@ export default function BookPage() {
             )}
 
             {/* Library actions */}
-            <div className="mt-9 flex flex-wrap gap-3">
-              {libraryEntry ? (
-                <div className="rounded-xl border border-[#c4a46a]/20 bg-[#c4a46a]/10 px-6 py-3 text-sm font-medium text-[#c4a46a]">
-                  {getStatusLabel(
-                    libraryEntry.status,
-                  )}
-                </div>
-              ) : (
+            <div className="mt-9">
+              <div className="flex flex-wrap gap-3">
+                {libraryEntry ? (
+                  <div className="rounded-xl border border-[#c4a46a]/20 bg-[#c4a46a]/10 px-6 py-3 text-sm font-medium text-[#c4a46a]">
+                    {getStatusLabel(libraryEntry.status)}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleAddToLibrary}
+                    disabled={isAddingToLibrary}
+                    className="rounded-xl bg-[#f5f2ea] px-6 py-3 text-sm font-medium text-[#11110f] transition-all hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isAddingToLibrary
+                      ? "Adding..."
+                      : "Add to library"}
+                  </button>
+                )}
+
                 <button
                   type="button"
-                  className="rounded-xl bg-[#f5f2ea] px-6 py-3 text-sm font-medium text-[#11110f] transition-colors hover:bg-white"
+                  aria-label="Add to favorites"
+                  className="flex size-11 items-center justify-center rounded-xl border border-white/[0.08] text-white/50 transition-colors hover:bg-white/[0.04] hover:text-white"
                 >
-                  Add to library
+                  <Heart className="size-4" />
                 </button>
+
+                <button
+                  type="button"
+                  aria-label="Bookmark book"
+                  className="flex size-11 items-center justify-center rounded-xl border border-white/[0.08] text-white/50 transition-colors hover:bg-white/[0.04] hover:text-white"
+                >
+                  <Bookmark className="size-4" />
+                </button>
+
+                <button
+                  type="button"
+                  aria-label="More actions"
+                  className="flex size-11 items-center justify-center rounded-xl border border-white/[0.08] text-white/50 transition-colors hover:bg-white/[0.04] hover:text-white"
+                >
+                  <MoreHorizontal className="size-4" />
+                </button>
+              </div>
+
+              {actionError && (
+                <p className="mt-3 text-sm text-red-300">
+                  {actionError}
+                </p>
               )}
-
-              <button
-                type="button"
-                aria-label="Add to favorites"
-                className="flex size-11 items-center justify-center rounded-xl border border-white/[0.08] text-white/50 transition-colors hover:bg-white/[0.04] hover:text-white"
-              >
-                <Heart className="size-4" />
-              </button>
-
-              <button
-                type="button"
-                aria-label="Bookmark book"
-                className="flex size-11 items-center justify-center rounded-xl border border-white/[0.08] text-white/50 transition-colors hover:bg-white/[0.04] hover:text-white"
-              >
-                <Bookmark className="size-4" />
-              </button>
-
-              <button
-                type="button"
-                aria-label="More actions"
-                className="flex size-11 items-center justify-center rounded-xl border border-white/[0.08] text-white/50 transition-colors hover:bg-white/[0.04] hover:text-white"
-              >
-                <MoreHorizontal className="size-4" />
-              </button>
             </div>
+
 
             {/* Reading progress */}
             {libraryEntry &&

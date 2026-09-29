@@ -174,19 +174,16 @@ export async function loginUser(data: {
 
 export async function addBookToLibrary(
   bookId: string,
-  status = "WANT_TO_READ",
-) {
+  status: ReadingStatus = "WANT_TO_READ",
+): Promise<LibraryEntry> {
   const response = await fetch(
     `${API_URL}/library`,
     {
       method: "POST",
-
       headers: {
         "Content-Type": "application/json",
       },
-
       credentials: "include",
-
       body: JSON.stringify({
         bookId,
         status,
