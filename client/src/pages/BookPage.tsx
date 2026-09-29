@@ -47,6 +47,8 @@ export default function BookPage() {
 
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
+  const [isUpdatingProgress, setIsUpdatingProgress] = useState(false);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -120,6 +122,50 @@ export default function BookPage() {
       isMounted = false;
     };
   }, [id, externalId]);
+
+  async function handleProgressChange(
+  currentPage: number,
+) {
+    if (
+      !book ||
+      !libraryEntry ||
+      isUpdatingProgress
+    ) {
+      return;
+    }
+
+    if (
+      currentPage === libraryEntry.currentPage
+    ) {
+      return;
+    }
+
+    try {
+      setIsUpdatingProgress(true);
+      setActionError(null);
+
+      const updatedEntry =
+        await updateLibraryEntry(
+          book.id,
+          { currentPage },
+        );
+
+      setLibraryEntry(updatedEntry);
+    } catch (error) {
+      console.error(
+        "Failed to update reading progress:",
+        error,
+      );
+
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : "Failed to update reading progress",
+      );
+    } finally {
+      setIsUpdatingProgress(false);
+    }
+  }
 
 
     async function handleStatusChange(
@@ -423,12 +469,10 @@ export default function BookPage() {
                 "READING" &&
               book.pageCount ? (
               <ReadingProgress
-                currentPage={
-                  libraryEntry.currentPage
-                }
-                pageCount={
-                  book.pageCount
-                }
+                currentPage={libraryEntry.currentPage}
+                pageCount={book.pageCount}
+                onUpdate={handleProgressChange}
+                isUpdating={isUpdatingProgress}
               />
             ) : null}
 
@@ -500,16 +544,44 @@ export default function BookPage() {
 function ReadingProgress({
   currentPage,
   pageCount,
+  onUpdate,
+  isUpdating,
 }: {
   currentPage: number;
   pageCount: number;
+  onUpdate: (currentPage: number) => void;
+  isUpdating: boolean;
 }) {
+  const [page, setPage] =
+    useState(currentPage.toString());
+
+  useEffect(() => {
+    setPage(currentPage.toString());
+  }, [currentPage]);
+
   const percentage = Math.min(
     100,
     Math.round(
       (currentPage / pageCount) * 100,
     ),
   );
+
+  function handleSubmit(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+
+    const parsedPage = Number(page);
+
+    if (
+      !Number.isInteger(parsedPage) ||
+      parsedPage < 0
+    ) {
+      return;
+    }
+
+    onUpdate(parsedPage);
+  }
 
   return (
     <div className="mt-8 max-w-2xl rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
@@ -532,9 +604,49 @@ function ReadingProgress({
         />
       </div>
 
-      <p className="mt-2 text-xs text-white/30">
-        {currentPage} of {pageCount} pages
-      </p>
+      <form
+        onSubmit={handleSubmit}
+        className="mt-4 flex items-center justify-between gap-4"
+      >
+        <p className="text-xs text-white/30">
+          {currentPage} of {pageCount} pages
+        </p>
+
+        <div className="flex items-center gap-2">
+          <label
+            htmlFor="current-page"
+            className="sr-only"
+          >
+            Current page
+          </label>
+
+          <input
+            id="current-page"
+            type="number"
+            min={0}
+            max={pageCount}
+            value={page}
+            onChange={(event) =>
+              setPage(event.target.value)
+            }
+            disabled={isUpdating}
+            className="w-20 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-right text-xs text-white/80 outline-none transition-colors focus:border-[#c4a46a]/40 disabled:cursor-not-allowed disabled:opacity-50"
+          />
+
+          <button
+            type="submit"
+            disabled={
+              isUpdating ||
+              Number(page) === currentPage
+            }
+            className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs font-medium text-white/60 transition-colors hover:border-white/[0.15] hover:bg-white/[0.04] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {isUpdating
+              ? "Saving..."
+              : "Update"}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
