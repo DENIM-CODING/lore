@@ -4,6 +4,8 @@ import { Link } from "react-router-dom";
 
 import { getUserLibrary } from "@/lib/api";
 import { LibraryBookCard } from "@/components/library/LibraryBookCard";
+import { LibraryBookSkeleton } from "@/components/library/LibraryBookSkeleton";
+
 import type {
   LibraryEntry,
   ReadingStatus,
@@ -187,10 +189,14 @@ export default function LibraryPage() {
 
         <div className="mt-8">
           {isLoading ? (
-            <div className="flex min-h-48 items-center justify-center">
-              <p className="text-sm text-white/40">
-                Loading your library...
-              </p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-10 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+              {Array.from({ length: 6 }).map(
+                (_, index) => (
+                  <LibraryBookSkeleton
+                    key={index}
+                  />
+                ),
+              )}
             </div>
           ) : error ? (
             <div className="rounded-2xl border border-red-400/10 bg-red-400/[0.04] p-6">
