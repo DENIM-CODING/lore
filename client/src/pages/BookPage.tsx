@@ -16,9 +16,11 @@ import {
   getBookByGoogleId,
   getBookById,
   getLibraryEntry,
+  removeBookFromLibrary,
   updateLibraryEntry,
   type Book,
 } from "@/lib/api";
+
 import type {
   LibraryEntry,
   ReadingStatus,
@@ -48,6 +50,8 @@ export default function BookPage() {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   const [isUpdatingProgress, setIsUpdatingProgress] = useState(false);
+
+  const [moreOpen, setMoreOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -122,6 +126,36 @@ export default function BookPage() {
       isMounted = false;
     };
   }, [id, externalId]);
+
+  async function handleRemoveFromLibrary() {
+    if (
+      !book ||
+      !libraryEntry
+    ) {
+      return;
+    }
+
+    try {
+      setActionError(null);
+
+      await removeBookFromLibrary(
+        book.id,
+      );
+
+      setLibraryEntry(null);
+    } catch (error) {
+      console.error(
+        "Failed to remove book from library:",
+        error,
+      );
+
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : "Failed to remove book from library",
+      );
+    }
+  }
 
   async function handleProgressChange(
   currentPage: number,
@@ -446,13 +480,34 @@ export default function BookPage() {
                   <Bookmark className="size-4" />
                 </button>
 
-                <button
-                  type="button"
-                  aria-label="More actions"
-                  className="flex size-11 items-center justify-center rounded-xl border border-white/[0.08] text-white/50 transition-colors hover:bg-white/[0.04] hover:text-white"
-                >
-                  <MoreHorizontal className="size-4" />
-                </button>
+                <div className="relative">
+                  <button
+                    type="button"
+                    aria-label="More actions"
+                    aria-expanded={moreOpen}
+                    onClick={() =>
+                      setMoreOpen((value) => !value)
+                    }
+                    className="flex size-11 items-center justify-center rounded-xl border border-white/[0.08] text-white/50 transition-colors hover:bg-white/[0.04] hover:text-white"
+                  >
+                    <MoreHorizontal className="size-4" />
+                  </button>
+
+                  {moreOpen && libraryEntry && (
+                    <div className="absolute right-0 top-[calc(100%+0.5rem)] z-20 w-48 rounded-xl border border-white/[0.08] bg-[#111113] p-1.5 shadow-2xl">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMoreOpen(false);
+                          handleRemoveFromLibrary();
+                        }}
+                        className="flex w-full items-center rounded-lg px-3 py-2.5 text-left text-sm text-red-300/80 transition-colors hover:bg-red-400/[0.06] hover:text-red-300"
+                      >
+                        Remove from library
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {actionError && (
@@ -472,7 +527,11 @@ export default function BookPage() {
                 currentPage={libraryEntry.currentPage}
                 pageCount={book.pageCount}
                 onUpdate={handleProgressChange}
+                onComplete={() =>
+                  handleStatusChange("COMPLETED")
+                }
                 isUpdating={isUpdatingProgress}
+                isCompleting={isUpdatingStatus}
               />
             ) : null}
 
@@ -545,12 +604,16 @@ function ReadingProgress({
   currentPage,
   pageCount,
   onUpdate,
+  onComplete,
   isUpdating,
+  isCompleting,
 }: {
   currentPage: number;
   pageCount: number;
   onUpdate: (currentPage: number) => void;
+  onComplete: () => void;
   isUpdating: boolean;
+  isCompleting: boolean;
 }) {
   const [page, setPage] =
     useState(currentPage.toString());
@@ -647,6 +710,30 @@ function ReadingProgress({
           </button>
         </div>
       </form>
+      {currentPage === pageCount && (
+        <div className="mt-5 flex flex-col gap-3 rounded-xl border border-[#c4a46a]/15 bg-[#c4a46a]/[0.05] p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-[#f5f2ea]">
+              You've reached the end.
+            </p>
+
+            <p className="mt-1 text-xs text-white/35">
+              Mark this book as completed when you're finished.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onComplete}
+            disabled={isCompleting}
+            className="shrink-0 rounded-lg bg-[#c4a46a] px-4 py-2 text-xs font-medium text-[#11110f] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isCompleting
+              ? "Finishing..."
+              : "Mark as completed"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
