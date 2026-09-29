@@ -16,10 +16,13 @@ import {
   getBookByGoogleId,
   getBookById,
   getLibraryEntry,
+  updateLibraryEntry,
   type Book,
 } from "@/lib/api";
-
-import type { LibraryEntry } from "@/types/library";
+import type {
+  LibraryEntry,
+  ReadingStatus,
+} from "@/types/library";
 
 export default function BookPage() {
   const {
@@ -30,23 +33,19 @@ export default function BookPage() {
     externalId?: string;
   }>();
 
-  const [isAddingToLibrary, setIsAddingToLibrary] =
-  useState(false);
+  const [isAddingToLibrary, setIsAddingToLibrary] = useState(false);
 
-  const [actionError, setActionError] =
-    useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  const [book, setBook] =
-    useState<Book | null>(null);
+  const [book, setBook] = useState<Book | null>(null);
 
-  const [libraryEntry, setLibraryEntry] =
-    useState<LibraryEntry | null>(null);
+  const [libraryEntry, setLibraryEntry] = useState<LibraryEntry | null>(null);
 
-  const [isLoading, setIsLoading] =
-    useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [error, setError] =
-    useState("");
+  const [error, setError] = useState("");
+
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -121,6 +120,45 @@ export default function BookPage() {
       isMounted = false;
     };
   }, [id, externalId]);
+
+
+    async function handleStatusChange(
+      status: ReadingStatus,
+    ) {
+      if (
+        !libraryEntry ||
+        isUpdatingStatus ||
+        status === libraryEntry.status
+      ) {
+        return;
+      }
+
+      try {
+        setIsUpdatingStatus(true);
+        setActionError(null);
+
+        const updatedEntry =
+          await updateLibraryEntry(
+            book!.id,
+            { status },
+          );
+
+        setLibraryEntry(updatedEntry);
+      } catch (error) {
+        console.error(
+          "Failed to update reading status:",
+          error,
+        );
+
+        setActionError(
+          error instanceof Error
+            ? error.message
+            : "Failed to update reading status",
+        );
+      } finally {
+        setIsUpdatingStatus(false);
+      }
+    }
 
   async function handleAddToLibrary() {
     if (!book || libraryEntry || isAddingToLibrary) {
@@ -294,8 +332,44 @@ export default function BookPage() {
             <div className="mt-9">
               <div className="flex flex-wrap gap-3">
                 {libraryEntry ? (
-                  <div className="rounded-xl border border-[#c4a46a]/20 bg-[#c4a46a]/10 px-6 py-3 text-sm font-medium text-[#c4a46a]">
-                    {getStatusLabel(libraryEntry.status)}
+                  <div className="relative">
+                    <select
+                      value={libraryEntry.status}
+                      onChange={(event) =>
+                        handleStatusChange(
+                          event.target.value as ReadingStatus,
+                        )
+                      }
+                      disabled={isUpdatingStatus}
+                      aria-label="Reading status"
+                      className="appearance-none rounded-xl border border-[#c4a46a]/20 bg-[#c4a46a]/10 px-6 py-3 pr-10 text-sm font-medium text-[#c4a46a] outline-none transition-all hover:border-[#c4a46a]/35 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <option value="WANT_TO_READ">
+                        Want to Read
+                      </option>
+
+                      <option value="READING">
+                        Reading
+                      </option>
+
+                      <option value="ON_HOLD">
+                        On Hold
+                      </option>
+
+                      <option value="COMPLETED">
+                        Completed
+                      </option>
+
+                      <option value="DROPPED">
+                        Dropped
+                      </option>
+                    </select>
+
+                    {isUpdatingStatus && (
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-white/40">
+                        ...
+                      </span>
+                    )}
                   </div>
                 ) : (
                   <button
@@ -402,26 +476,26 @@ export default function BookPage() {
   );
 }
 
-function getStatusLabel(
-  status: LibraryEntry["status"],
-) {
-  switch (status) {
-    case "WANT_TO_READ":
-      return "Want to Read";
+// function getStatusLabel(
+//   status: LibraryEntry["status"],
+// ) {
+//   switch (status) {
+//     case "WANT_TO_READ":
+//       return "Want to Read";
 
-    case "READING":
-      return "Reading";
+//     case "READING":
+//       return "Reading";
 
-    case "ON_HOLD":
-      return "On Hold";
+//     case "ON_HOLD":
+//       return "On Hold";
 
-    case "COMPLETED":
-      return "Completed";
+//     case "COMPLETED":
+//       return "Completed";
 
-    case "DROPPED":
-      return "Dropped";
-  }
-}
+//     case "DROPPED":
+//       return "Dropped";
+//   }
+// }
 
 function ReadingProgress({
   currentPage,
