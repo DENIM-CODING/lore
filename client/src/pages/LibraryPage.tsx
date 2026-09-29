@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { BookOpen } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { getUserLibrary } from "@/lib/api";
 import { LibraryBookCard } from "@/components/library/LibraryBookCard";
@@ -38,7 +39,47 @@ const shelves: {
   },
 ];
 
+const emptyStates: Record<
+  string,
+  {
+    title: string;
+    description: string;
+  }
+> = {
+  ALL: {
+    title: "Your library is empty.",
+    description:
+      "Books you add to your library will appear here.",
+  },
+  WANT_TO_READ: {
+    title: "Your reading list is waiting.",
+    description:
+      "Save books you want to read and they'll appear here.",
+  },
+  READING: {
+    title: "Nothing you're reading right now.",
+    description:
+      "Books you start reading will appear here.",
+  },
+  ON_HOLD: {
+    title: "No books are on hold.",
+    description:
+      "Books you pause will appear here.",
+  },
+  COMPLETED: {
+    title: "No completed books yet.",
+    description:
+      "Books you finish will appear here.",
+  },
+  DROPPED: {
+    title: "No dropped books.",
+    description:
+      "Books you decide not to continue will appear here.",
+  },
+};
+
 export default function LibraryPage() {
+
   const [library, setLibrary] = useState<
     LibraryEntry[]
   >([]);
@@ -53,6 +94,10 @@ export default function LibraryPage() {
 
   const [error, setError] =
     useState<string | null>(null);
+
+  const activeShelfKey = activeShelf ?? "ALL";
+
+  const emptyState = emptyStates[activeShelfKey];
 
   useEffect(() => {
     let isMounted = true;
@@ -160,13 +205,21 @@ export default function LibraryPage() {
               </div>
 
               <h2 className="mt-5 text-sm font-medium text-white/75">
-                Nothing here yet
+                {emptyState.title}
               </h2>
 
               <p className="mt-2 max-w-sm text-sm leading-6 text-white/35">
-                Books you add to this shelf will
-                appear here.
+                {emptyState.description}
               </p>
+
+              {activeShelf === undefined && (
+                <Link
+                  to="/discover"
+                  className="mt-5 text-xs font-medium text-[#c4a46a] transition-colors hover:text-[#d8bd83]"
+                >
+                  Discover books →
+                </Link>
+              )}
             </div>
           ) : (
             <div>
