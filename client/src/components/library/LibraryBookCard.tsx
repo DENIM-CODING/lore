@@ -1,5 +1,5 @@
-import { Link } from "react-router-dom";
 import { BookOpen } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import type { LibraryEntry } from "@/types/library";
 
@@ -22,6 +22,27 @@ function getProgress(entry: LibraryEntry): number {
   );
 }
 
+function getStatusLabel(
+  status: LibraryEntry["status"],
+): string {
+  switch (status) {
+    case "WANT_TO_READ":
+      return "Want to Read";
+
+    case "READING":
+      return "Reading";
+
+    case "ON_HOLD":
+      return "On Hold";
+
+    case "COMPLETED":
+      return "Completed";
+
+    case "DROPPED":
+      return "Dropped";
+  }
+}
+
 export function LibraryBookCard({
   entry,
 }: LibraryBookCardProps) {
@@ -34,6 +55,7 @@ export function LibraryBookCard({
         className="block"
         aria-label={`View ${entry.book.title}`}
       >
+        {/* Cover */}
         <div className="relative aspect-[2/3] overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03]">
           {entry.book.coverUrl ? (
             <img
@@ -52,7 +74,7 @@ export function LibraryBookCard({
 
           {entry.status === "READING" &&
             entry.book.pageCount && (
-              <div className="absolute inset-x-0 bottom-0 p-3 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 p-3 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
                 <div className="h-1 overflow-hidden rounded-full bg-white/20">
                   <div
                     className="h-full rounded-full bg-[#c4a46a]"
@@ -70,6 +92,7 @@ export function LibraryBookCard({
             )}
         </div>
 
+        {/* Book information */}
         <h2 className="mt-4 truncate text-sm font-medium text-white/85 transition-colors duration-300 group-hover:text-white">
           {entry.book.title}
         </h2>
@@ -78,17 +101,41 @@ export function LibraryBookCard({
           {entry.book.author}
         </p>
 
+        {/* Status */}
+        <div className="mt-2 flex items-center gap-2 text-[11px]">
+          <span
+            className={
+              entry.status === "READING"
+                ? "text-[#c4a46a]"
+                : entry.status === "COMPLETED"
+                  ? "text-white/45"
+                  : "text-white/30"
+            }
+          >
+            {getStatusLabel(entry.status)}
+          </span>
+
+          {entry.status === "READING" &&
+            entry.book.pageCount && (
+              <>
+                <span className="text-white/15">
+                  ·
+                </span>
+
+                <span className="text-white/25">
+                  {progress}%
+                </span>
+              </>
+            )}
+        </div>
+
+        {/* Reading progress */}
         {entry.status === "READING" &&
           entry.book.pageCount && (
             <div className="mt-3">
-              <div className="flex items-center justify-between text-[11px] text-white/30">
-                <span>Reading</span>
-                <span>{progress}%</span>
-              </div>
-
-              <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/[0.08]">
+              <div className="h-1 overflow-hidden rounded-full bg-white/[0.08]">
                 <div
-                  className="h-full rounded-full bg-[#c4a46a]"
+                  className="h-full rounded-full bg-[#c4a46a] transition-all duration-500"
                   style={{
                     width: `${progress}%`,
                   }}
