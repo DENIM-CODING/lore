@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import { BookOpen } from "lucide-react";
+import {
+  BookOpen,
+  Search,
+  X,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { getUserLibrary } from "@/lib/api";
@@ -81,15 +85,18 @@ const emptyStates: Record<
 };
 
 export default function LibraryPage() {
-
-  const [library, setLibrary] = useState<
-    LibraryEntry[]
-  >([]);
+  const [library, setLibrary] =
+    useState<LibraryEntry[]>([]);
 
   const [activeShelf, setActiveShelf] =
     useState<ReadingStatus | undefined>(
       undefined,
     );
+
+  const [searchInput, setSearchInput] =
+    useState("");
+
+  const [search, setSearch] = useState("");
 
   const [isLoading, setIsLoading] =
     useState(true);
@@ -97,9 +104,25 @@ export default function LibraryPage() {
   const [error, setError] =
     useState<string | null>(null);
 
-  const activeShelfKey = activeShelf ?? "ALL";
+  const activeShelfKey =
+    activeShelf ?? "ALL";
 
-  const emptyState = emptyStates[activeShelfKey];
+  const emptyState =
+    emptyStates[activeShelfKey];
+
+  /*
+   * Debounce the search input so we do not
+   * request the API on every keystroke.
+   */
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setSearch(searchInput.trim());
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [searchInput]);
 
   useEffect(() => {
     let isMounted = true;
@@ -110,7 +133,10 @@ export default function LibraryPage() {
         setError(null);
 
         const data =
-          await getUserLibrary(activeShelf);
+          await getUserLibrary(
+            activeShelf,
+            search,
+          );
 
         if (isMounted) {
           setLibrary(data);
@@ -137,7 +163,9 @@ export default function LibraryPage() {
     return () => {
       isMounted = false;
     };
-  }, [activeShelf]);
+  }, [activeShelf, search]);
+
+  const hasSearch = search.length > 0;
 
   return (
     <main className="min-h-screen px-4 pb-16 pt-32 sm:px-6 lg:px-8">
@@ -157,7 +185,34 @@ export default function LibraryPage() {
           </p>
         </header>
 
-        <div className="mt-10 overflow-x-auto border-b border-white/[0.08]">
+        {/* Search */}
+        <div className="relative mt-8 max-w-xl">
+          <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-white/25" />
+
+          <input
+            type="search"
+            value={searchInput}
+            onChange={(event) =>
+              setSearchInput(event.target.value)
+            }
+            placeholder="Search your library..."
+            aria-label="Search your library"
+            className="h-11 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] pl-11 pr-11 text-sm text-white/85 outline-none placeholder:text-white/25 transition-colors focus:border-[#c4a46a]/40 focus:bg-white/[0.04]"
+          />
+
+          {searchInput && (
+            <button
+              type="button"
+              onClick={() => setSearchInput("")}
+              aria-label="Clear library search"
+              className="absolute right-3 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-lg text-white/30 transition-colors hover:bg-white/[0.06] hover:text-white/70"
+            >
+              <X className="size-4" />
+            </button>
+          )}
+        </div>
+
+        <div className="mt-8 overflow-x-auto border-b border-white/[0.08]">
           <div className="flex min-w-max gap-7">
             {shelves.map((shelf) => {
               const isActive =
@@ -211,20 +266,40 @@ export default function LibraryPage() {
               </div>
 
               <h2 className="mt-5 text-sm font-medium text-white/75">
-                {emptyState.title}
+                {hasSearch
+                  ? "No books found."
+                  : emptyState.title}
               </h2>
 
               <p className="mt-2 max-w-sm text-sm leading-6 text-white/35">
-                {emptyState.description}
+                {hasSearch
+                  ? `No books in ${
+                      activeShelfKey === "ALL"
+                        ? "your library"
+                        : "this shelf"
+                    } match "${search}".`
+                  : emptyState.description}
               </p>
 
-              {activeShelf === undefined && (
-                <Link
-                  to="/discover"
+              {hasSearch ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchInput("");
+                  }}
                   className="mt-5 text-xs font-medium text-[#c4a46a] transition-colors hover:text-[#d8bd83]"
                 >
-                  Discover books →
-                </Link>
+                  Clear search
+                </button>
+              ) : (
+                activeShelf === undefined && (
+                  <Link
+                    to="/discover"
+                    className="mt-5 text-xs font-medium text-[#c4a46a] transition-colors hover:text-[#d8bd83]"
+                  >
+                    Discover books →
+                  </Link>
+                )
               )}
             </div>
           ) : (

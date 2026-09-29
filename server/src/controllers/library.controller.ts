@@ -57,46 +57,67 @@ function parseOptionalDate(
  * GET /api/library
  */
 export async function getLibrary(
-  req: Request,
-  res: Response,
-) {
-  try {
-    const userId = getUserId(req);
+    req: Request,
+    res: Response,
+  ) {
+    try {
+      const userId = getUserId(req);
 
-    const { status } = req.query;
+      const { status, search } =
+        req.query;
 
-    if (
-      status !== undefined &&
-      !isReadingStatus(status)
-    ) {
-      res.status(400).json({
-        success: false,
-        message: "Invalid reading status",
+      if (
+        status !== undefined &&
+        !isReadingStatus(status)
+      ) {
+        res.status(400).json({
+          success: false,
+          message: "Invalid reading status",
+        });
+
+        return;
+      }
+
+      if (
+        search !== undefined &&
+        typeof search !== "string"
+      ) {
+        res.status(400).json({
+          success: false,
+          message: "Invalid search query",
+        });
+
+        return;
+      }
+
+      const normalizedSearch =
+        typeof search === "string"
+          ? search.trim()
+          : undefined;
+
+      const library =
+        await getUserLibrary(
+          userId,
+          status as ReadingStatus | undefined,
+          normalizedSearch,
+        );
+
+      res.json({
+        success: true,
+        data: library,
       });
-      return;
+    } catch (error) {
+      console.error(
+        "Failed to fetch library:",
+        error,
+      );
+
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch library",
+      });
     }
-
-    const library = await getUserLibrary(
-      userId,
-      status as ReadingStatus | undefined,
-    );
-
-    res.json({
-      success: true,
-      data: library,
-    });
-  } catch (error) {
-    console.error(
-      "Failed to fetch library:",
-      error,
-    );
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch library",
-    });
   }
-}
 
 /**
  * GET /api/library/:bookId

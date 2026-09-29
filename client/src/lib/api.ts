@@ -205,11 +205,16 @@ export async function addBookToLibrary(
 
 export async function getUserLibrary(
   status?: ReadingStatus,
+  search?: string,
 ): Promise<LibraryEntry[]> {
   const searchParams = new URLSearchParams();
 
   if (status) {
     searchParams.set("status", status);
+  }
+
+  if (search?.trim()) {
+    searchParams.set("search", search.trim());
   }
 
   const queryString = searchParams.toString();

@@ -14,11 +14,34 @@ export type ReadingStatus =
 export async function getUserLibrary(
   userId: string,
   status?: ReadingStatus,
+  search?: string,
 ) {
   return prisma.libraryEntry.findMany({
     where: {
       userId,
+
       ...(status ? { status } : {}),
+
+      ...(search
+        ? {
+            book: {
+              OR: [
+                {
+                  title: {
+                    contains: search,
+                    mode: "insensitive",
+                  },
+                },
+                {
+                  author: {
+                    contains: search,
+                    mode: "insensitive",
+                  },
+                },
+              ],
+            },
+          }
+        : {}),
     },
     include: {
       book: true,
