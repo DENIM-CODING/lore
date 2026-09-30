@@ -7,6 +7,18 @@ import type {
   ReadingStatus,
 } from "@/types/library";
 
+export const LIBRARY_SORT_OPTIONS = [
+  "recently_updated",
+  "recently_added",
+  "title_asc",
+  "title_desc",
+  "author_asc",
+  "author_desc",
+] as const;
+
+export type LibrarySort =
+  (typeof LIBRARY_SORT_OPTIONS)[number];
+
 export interface Book {
   id: string;
   externalId: string;
@@ -206,6 +218,7 @@ export async function addBookToLibrary(
 export async function getUserLibrary(
   status?: ReadingStatus,
   search?: string,
+  sort?: LibrarySort,
 ): Promise<LibraryEntry[]> {
   const searchParams = new URLSearchParams();
 
@@ -215,6 +228,10 @@ export async function getUserLibrary(
 
   if (search?.trim()) {
     searchParams.set("search", search.trim());
+  }
+
+  if (sort) {
+    searchParams.set("sort", sort);
   }
 
   const queryString = searchParams.toString();

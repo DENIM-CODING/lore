@@ -11,11 +11,37 @@ export const READING_STATUSES = [
 export type ReadingStatus =
   (typeof READING_STATUSES)[number];
 
+export const LIBRARY_SORT_OPTIONS = [
+  "recently_updated",
+  "recently_added",
+  "title_asc",
+  "title_desc",
+  "author_asc",
+  "author_desc",
+] as const;
+
+export type LibrarySort =
+  (typeof LIBRARY_SORT_OPTIONS)[number];
+
 export async function getUserLibrary(
   userId: string,
   status?: ReadingStatus,
   search?: string,
+  sort: LibrarySort = "recently_updated",
 ) {
+  const orderBy =
+    sort === "recently_added"
+      ? { addedAt: "desc" as const }
+      : sort === "title_asc"
+        ? { book: { title: "asc" as const } }
+        : sort === "title_desc"
+          ? { book: { title: "desc" as const } }
+          : sort === "author_asc"
+            ? { book: { author: "asc" as const } }
+            : sort === "author_desc"
+              ? { book: { author: "desc" as const } }
+              : { updatedAt: "desc" as const };
+
   return prisma.libraryEntry.findMany({
     where: {
       userId,
@@ -43,15 +69,14 @@ export async function getUserLibrary(
           }
         : {}),
     },
+
     include: {
       book: true,
     },
-    orderBy: {
-      updatedAt: "desc",
-    },
+
+    orderBy,
   });
 }
-
 export async function getLibraryEntry(
   userId: string,
   bookId: string,

@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
-import { getUserLibrary } from "@/lib/api";
+import { getUserLibrary, type LibrarySort } from "@/lib/api";
 import { LibraryBookCard } from "@/components/library/LibraryBookCard";
 import { LibraryBookSkeleton } from "@/components/library/LibraryBookSkeleton";
 
@@ -44,6 +44,36 @@ const shelves: {
     value: "DROPPED",
   },
 ];
+
+const sortOptions: {
+  label: string;
+  value: LibrarySort;
+  }[] = [
+    {
+      label: "Recently updated",
+      value: "recently_updated",
+    },
+    {
+      label: "Recently added",
+      value: "recently_added",
+    },
+    {
+      label: "Title A–Z",
+      value: "title_asc",
+    },
+    {
+      label: "Title Z–A",
+      value: "title_desc",
+    },
+    {
+      label: "Author A–Z",
+      value: "author_asc",
+    },
+    {
+      label: "Author Z–A",
+      value: "author_desc",
+    },
+  ];
 
 const emptyStates: Record<
   string,
@@ -98,11 +128,11 @@ export default function LibraryPage() {
 
   const [search, setSearch] = useState("");
 
-  const [isLoading, setIsLoading] =
-    useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [error, setError] =
-    useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+    const [sort, setSort] = useState<LibrarySort>( "recently_updated",);
 
   const activeShelfKey =
     activeShelf ?? "ALL";
@@ -136,6 +166,7 @@ export default function LibraryPage() {
           await getUserLibrary(
             activeShelf,
             search,
+            sort,
           );
 
         if (isMounted) {
@@ -163,7 +194,7 @@ export default function LibraryPage() {
     return () => {
       isMounted = false;
     };
-  }, [activeShelf, search]);
+  }, [activeShelf, search, sort]);
 
   const hasSearch = search.length > 0;
 
@@ -242,7 +273,42 @@ export default function LibraryPage() {
           </div>
         </div>
 
-        <div className="mt-8">
+        <div className="mt-6 flex items-center justify-between gap-4">
+          <div className="text-xs text-white/30">
+            {hasSearch
+              ? `Results for "${search}"`
+              : "Your books"}
+          </div>
+
+          <label className="flex shrink-0 items-center gap-2">
+            <span className="text-xs text-white/30">
+              Sort
+            </span>
+
+            <select
+              value={sort}
+              onChange={(event) =>
+                setSort(
+                  event.target.value as LibrarySort,
+                )
+              }
+              aria-label="Sort library"
+              className="h-9 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-xs text-white/70 outline-none transition-colors focus:border-[#c4a46a]/40"
+            >
+              {sortOptions.map((option) => (
+                <option
+                  key={option.value}
+                  value={option.value}
+                  className="bg-[#111113] text-white"
+                >
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="mt-6">
           {isLoading ? (
             <div className="grid grid-cols-2 gap-x-4 gap-y-10 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
               {Array.from({ length: 6 }).map(

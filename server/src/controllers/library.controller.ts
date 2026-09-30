@@ -7,8 +7,10 @@ import {
   getUserLibrary,
   removeBookFromLibrary,
   READING_STATUSES,
+  LIBRARY_SORT_OPTIONS,
   updateLibraryEntry,
   type ReadingStatus,
+  type LibrarySort,
 } from "../services/library.service.js";
 
 function getUserId(req: Request): string {
@@ -22,6 +24,17 @@ function isReadingStatus(
     typeof value === "string" &&
     READING_STATUSES.includes(
       value as ReadingStatus,
+    )
+  );
+}
+
+function isLibrarySort(
+  value: unknown,
+): value is LibrarySort {
+  return (
+    typeof value === "string" &&
+    LIBRARY_SORT_OPTIONS.includes(
+      value as LibrarySort,
     )
   );
 }
@@ -56,68 +69,94 @@ function parseOptionalDate(
 /**
  * GET /api/library
  */
+/**
+ * GET /api/library
+ */
 export async function getLibrary(
-    req: Request,
-    res: Response,
-  ) {
-    try {
-      const userId = getUserId(req);
+  req: Request,
+  res: Response,
+) {
+  try {
+    const userId = getUserId(req);
 
-      const { status, search } =
-        req.query;
+    const {
+      status,
+      search,
+      sort,
+    } = req.query;
 
-      if (
-        status !== undefined &&
-        !isReadingStatus(status)
-      ) {
-        res.status(400).json({
-          success: false,
-          message: "Invalid reading status",
-        });
-
-        return;
-      }
-
-      if (
-        search !== undefined &&
-        typeof search !== "string"
-      ) {
-        res.status(400).json({
-          success: false,
-          message: "Invalid search query",
-        });
-
-        return;
-      }
-
-      const normalizedSearch =
-        typeof search === "string"
-          ? search.trim()
-          : undefined;
-
-      const library =
-        await getUserLibrary(
-          userId,
-          status as ReadingStatus | undefined,
-          normalizedSearch,
-        );
-
-      res.json({
-        success: true,
-        data: library,
+    if (
+      status !== undefined &&
+      !isReadingStatus(status)
+    ) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid reading status",
       });
-    } catch (error) {
-      console.error(
-        "Failed to fetch library:",
-        error,
+
+      return;
+    }
+
+    if (
+      search !== undefined &&
+      typeof search !== "string"
+    ) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid search query",
+      });
+
+      return;
+    }
+
+    if (
+      sort !== undefined &&
+      !isLibrarySort(sort)
+    ) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid library sort",
+      });
+
+      return;
+    }
+
+    const normalizedSearch =
+      typeof search === "string"
+        ? search.trim()
+        : undefined;
+
+    const normalizedSort =
+      typeof sort === "string"
+        ? sort
+        : undefined;
+
+    const library =
+      await getUserLibrary(
+        userId,
+        status as ReadingStatus | undefined,
+        normalizedSearch,
+        normalizedSort as
+          | LibrarySort
+          | undefined,
       );
 
-      res.status(500).json({
-        success: false,
-        message: "Failed to fetch library",
-      });
-    }
+    res.json({
+      success: true,
+      data: library,
+    });
+  } catch (error) {
+    console.error(
+      "Failed to fetch library:",
+      error,
+    );
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch library",
+    });
   }
+}
 
 /**
  * GET /api/library/:bookId
