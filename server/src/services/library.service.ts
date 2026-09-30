@@ -144,8 +144,6 @@ export async function updateLibraryEntry(data: {
   bookId: string;
   status?: ReadingStatus;
   currentPage?: number;
-  startedAt?: Date | null;
-  finishedAt?: Date | null;
   isFavorite?: boolean;
 }) {
   const existingEntry =
@@ -210,10 +208,45 @@ export async function updateLibraryEntry(data: {
   }
 
   /*
-   * COMPLETED is a server-controlled state.
+   * Validate requested page against the book's
+   * page count when the page count is available.
+   */
+  if (data.currentPage !== undefined) {
+    if (
+      existingEntry.book.pageCount !== null &&
+      data.currentPage >
+        existingEntry.book.pageCount
+    ) {
+      throw new Error(
+        "CURRENT_PAGE_EXCEEDS_PAGE_COUNT",
+      );
+    }
+
+    updateData.currentPage =
+      data.currentPage;
+  }
+
+  /*
+   * Starting a book:
    *
-   * We need the book's page count so that the server
-   * can move the user to the final page.
+   * The first time the user enters READING,
+   * record the start date.
+   *
+   * If the book was previously started, preserve
+   * the original startedAt value.
+   */
+  if (
+    nextStatus === "READING" &&
+    existingEntry.startedAt === null
+  ) {
+    updateData.startedAt = new Date();
+  }
+
+  /*
+   * Completing a book is server-controlled.
+   *
+   * The server moves the user to the final page
+   * and records the finish date.
    */
   if (nextStatus === "COMPLETED") {
     if (existingEntry.book.pageCount === null) {
@@ -229,49 +262,28 @@ export async function updateLibraryEntry(data: {
 
     updateData.finishedAt = now;
 
+    /*
+     * A user can complete a book directly from
+     * WANT_TO_READ, so make sure it also gets
+     * a start date.
+     */
     if (existingEntry.startedAt === null) {
       updateData.startedAt = now;
     }
-  } else {
-    /*
-     * Validate the requested page against the book's
-     * page count when the page count is available.
-     */
-    if (data.currentPage !== undefined) {
-      if (
-        existingEntry.book.pageCount !== null &&
-        data.currentPage >
-          existingEntry.book.pageCount
-      ) {
-        throw new Error(
-          "CURRENT_PAGE_EXCEEDS_PAGE_COUNT",
-        );
-      }
+  }
 
-      updateData.currentPage =
-        data.currentPage;
-    }
-
-    /*
-     * A completed book moved back to another status
-     * is no longer currently completed.
-     */
-    if (
-      existingEntry.status === "COMPLETED" &&
-      data.status !== undefined
-    ) {
-      updateData.finishedAt = null;
-    }
-
-    if (data.startedAt !== undefined) {
-      updateData.startedAt =
-        data.startedAt;
-    }
-
-    if (data.finishedAt !== undefined) {
-      updateData.finishedAt =
-        data.finishedAt;
-    }
+  /*
+   * Any non-completed status means the book is
+   * not currently finished.
+   *
+   * We clear finishedAt when moving away from
+   * COMPLETED.
+   */
+  if (
+    existingEntry.status === "COMPLETED" &&
+    nextStatus !== "COMPLETED"
+  ) {
+    updateData.finishedAt = null;
   }
 
   return prisma.libraryEntry.update({

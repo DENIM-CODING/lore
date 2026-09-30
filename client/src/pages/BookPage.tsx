@@ -26,6 +26,23 @@ import type {
   ReadingStatus,
 } from "@/types/library";
 
+function formatReadingDate(
+  date: string | null,
+) {
+  if (!date) {
+    return null;
+  }
+
+  return new Intl.DateTimeFormat(
+    undefined,
+    {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    },
+  ).format(new Date(date));
+}
+
 export default function BookPage() {
   const {
     id,
@@ -584,20 +601,34 @@ export default function BookPage() {
 
             {/* Reading progress */}
             {libraryEntry &&
-              libraryEntry.status ===
-                "READING" &&
+              libraryEntry.status === "READING" &&
               book.pageCount ? (
-              <ReadingProgress
-                currentPage={libraryEntry.currentPage}
-                pageCount={book.pageCount}
-                onUpdate={handleProgressChange}
-                onComplete={() =>
-                  handleStatusChange("COMPLETED")
-                }
-                isUpdating={isUpdatingProgress}
-                isCompleting={isUpdatingStatus}
-              />
-            ) : null}
+                <>
+                  <ReadingProgress
+                    currentPage={libraryEntry.currentPage}
+                    pageCount={book.pageCount}
+                    onUpdate={handleProgressChange}
+                    onComplete={() =>
+                      handleStatusChange("COMPLETED")
+                    }
+                    isUpdating={isUpdatingProgress}
+                    isCompleting={isUpdatingStatus}
+                  />
+
+                  <ReadingDates
+                    startedAt={libraryEntry.startedAt}
+                    finishedAt={libraryEntry.finishedAt}
+                  />
+                </>
+              ) : null}
+
+            {libraryEntry &&
+              libraryEntry.status === "COMPLETED" ? (
+                <ReadingDates
+                  startedAt={libraryEntry.startedAt}
+                  finishedAt={libraryEntry.finishedAt}
+                />
+              ) : null}
 
             {/* Metadata */}
             <div className="mt-12 grid max-w-2xl grid-cols-2 gap-4 sm:grid-cols-4">
@@ -663,6 +694,53 @@ export default function BookPage() {
 //       return "Dropped";
 //   }
 // }
+
+
+function ReadingDates({
+  startedAt,
+  finishedAt,
+}: {
+  startedAt: string | null;
+  finishedAt: string | null;
+}) {
+  const startedDate =
+    formatReadingDate(startedAt);
+
+  const finishedDate =
+    formatReadingDate(finishedAt);
+
+  if (!startedDate && !finishedDate) {
+    return null;
+  }
+
+  return (
+    <div className="mt-4 grid max-w-2xl grid-cols-2 gap-3">
+      {startedDate ? (
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+          <p className="text-[10px] uppercase tracking-[0.16em] text-white/25">
+            Started
+          </p>
+
+          <p className="mt-1.5 text-sm text-white/65">
+            {startedDate}
+          </p>
+        </div>
+      ) : null}
+
+      {finishedDate ? (
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+          <p className="text-[10px] uppercase tracking-[0.16em] text-white/25">
+            Finished
+          </p>
+
+          <p className="mt-1.5 text-sm text-white/65">
+            {finishedDate}
+          </p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 function ReadingProgress({
   currentPage,

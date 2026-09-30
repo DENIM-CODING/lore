@@ -39,32 +39,6 @@ function isLibrarySort(
   );
 }
 
-function parseOptionalDate(
-  value: unknown,
-): Date | null | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  if (value === null) {
-    return null;
-  }
-
-  if (
-    typeof value !== "string" ||
-    !value.trim()
-  ) {
-    throw new Error("INVALID_DATE");
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    throw new Error("INVALID_DATE");
-  }
-
-  return date;
-}
 
 /**
  * GET /api/library
@@ -325,8 +299,6 @@ export async function updateLibrary(
     const {
       status,
       currentPage,
-      startedAt,
-      finishedAt,
       isFavorite,
     } = req.body;
 
@@ -368,46 +340,12 @@ export async function updateLibrary(
       return;
     }
 
-    let parsedStartedAt:
-      | Date
-      | null
-      | undefined;
-
-    let parsedFinishedAt:
-      | Date
-      | null
-      | undefined;
-
-    try {
-      parsedStartedAt =
-        parseOptionalDate(startedAt);
-
-      parsedFinishedAt =
-        parseOptionalDate(finishedAt);
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message === "INVALID_DATE"
-      ) {
-        res.status(400).json({
-          success: false,
-          message:
-            "startedAt and finishedAt must be valid dates",
-        });
-        return;
-      }
-
-      throw error;
-    }
-
     const libraryEntry =
       await updateLibraryEntry({
         userId,
         bookId: bookId.trim(),
         status,
         currentPage,
-        startedAt: parsedStartedAt,
-        finishedAt: parsedFinishedAt,
         isFavorite,
       });
 
