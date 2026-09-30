@@ -13,19 +13,14 @@ export type ReadingStatus =
 
 export interface LibraryEntry {
   id: string;
-
   status: ReadingStatus;
-
   currentPage: number;
-
   startedAt: string | null;
   finishedAt: string | null;
-
+  isFavorite: boolean;
   addedAt: string;
   updatedAt: string;
-
   userId: string;
   bookId: string;
-
   book: Book;
 }

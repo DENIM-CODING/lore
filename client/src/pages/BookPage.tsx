@@ -51,6 +51,8 @@ export default function BookPage() {
 
   const [isUpdatingProgress, setIsUpdatingProgress] = useState(false);
 
+  const [isUpdatingFavorite, setIsUpdatingFavorite] = useState(false);
+
   const [moreOpen, setMoreOpen] = useState(false);
 
   useEffect(() => {
@@ -237,6 +239,45 @@ export default function BookPage() {
         );
       } finally {
         setIsUpdatingStatus(false);
+      }
+    }
+
+    async function handleFavoriteToggle() {
+      if (
+        !book ||
+        !libraryEntry ||
+        isUpdatingFavorite
+      ) {
+        return;
+      }
+
+      try {
+        setIsUpdatingFavorite(true);
+        setActionError(null);
+
+        const updatedEntry =
+          await updateLibraryEntry(
+            book.id,
+            {
+              isFavorite:
+                !libraryEntry.isFavorite,
+            },
+          );
+
+        setLibraryEntry(updatedEntry);
+      } catch (error) {
+        console.error(
+          "Failed to update favorite:",
+          error,
+        );
+
+        setActionError(
+          error instanceof Error
+            ? error.message
+            : "Failed to update favorite",
+        );
+      } finally {
+        setIsUpdatingFavorite(false);
       }
     }
 
@@ -466,10 +507,33 @@ export default function BookPage() {
 
                 <button
                   type="button"
-                  aria-label="Add to favorites"
-                  className="flex size-11 items-center justify-center rounded-xl border border-white/[0.08] text-white/50 transition-colors hover:bg-white/[0.04] hover:text-white"
+                  onClick={handleFavoriteToggle}
+                  disabled={
+                    !libraryEntry ||
+                    isUpdatingFavorite
+                  }
+                  aria-label={
+                    libraryEntry?.isFavorite
+                      ? "Remove from favorites"
+                      : "Add to favorites"
+                  }
+                  aria-pressed={
+                    libraryEntry?.isFavorite ?? false
+                  }
+                  className={`flex size-11 items-center justify-center rounded-xl border transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                    libraryEntry?.isFavorite
+                      ? "border-[#c4a46a]/30 bg-[#c4a46a]/10 text-[#c4a46a]"
+                      : "border-white/[0.08] text-white/50 hover:bg-white/[0.04] hover:text-white"
+                  }`}
                 >
-                  <Heart className="size-4" />
+                  <Heart
+                    className="size-4"
+                    fill={
+                      libraryEntry?.isFavorite
+                        ? "currentColor"
+                        : "none"
+                    }
+                  />
                 </button>
 
                 <button

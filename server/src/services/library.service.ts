@@ -8,6 +8,8 @@ export const READING_STATUSES = [
   "DROPPED",
 ] as const;
 
+export const MAX_FAVORITES = 10;
+
 export type ReadingStatus =
   (typeof READING_STATUSES)[number];
 
@@ -28,6 +30,7 @@ export async function getUserLibrary(
   status?: ReadingStatus,
   search?: string,
   sort: LibrarySort = "recently_updated",
+  favorite?: boolean,
 ) {
   const orderBy =
     sort === "recently_added"
@@ -47,6 +50,10 @@ export async function getUserLibrary(
       userId,
 
       ...(status ? { status } : {}),
+
+      ...(favorite !== undefined
+        ? { isFavorite: favorite }
+        : {}),
 
       ...(search
         ? {
@@ -139,6 +146,7 @@ export async function updateLibraryEntry(data: {
   currentPage?: number;
   startedAt?: Date | null;
   finishedAt?: Date | null;
+  isFavorite?: boolean;
 }) {
   const existingEntry =
     await prisma.libraryEntry.findUnique({
@@ -162,6 +170,25 @@ export async function updateLibraryEntry(data: {
     throw new Error("LIBRARY_ENTRY_NOT_FOUND");
   }
 
+  if (
+    data.isFavorite === true &&
+    !existingEntry.isFavorite
+  ) {
+    const favoriteCount =
+      await prisma.libraryEntry.count({
+        where: {
+          userId: data.userId,
+          isFavorite: true,
+        },
+      });
+
+    if (favoriteCount >= MAX_FAVORITES) {
+      throw new Error(
+        "FAVORITE_LIMIT_REACHED",
+      );
+    }
+  }
+
   const nextStatus =
     data.status ?? existingEntry.status;
 
@@ -170,10 +197,16 @@ export async function updateLibraryEntry(data: {
     currentPage?: number;
     startedAt?: Date | null;
     finishedAt?: Date | null;
+    isFavorite?: boolean;
   } = {};
 
   if (data.status !== undefined) {
     updateData.status = data.status;
+  }
+
+  if (data.isFavorite !== undefined) {
+    updateData.isFavorite =
+      data.isFavorite;
   }
 
   /*

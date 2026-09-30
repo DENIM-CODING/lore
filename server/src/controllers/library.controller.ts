@@ -83,6 +83,7 @@ export async function getLibrary(
       status,
       search,
       sort,
+      favorite,
     } = req.query;
 
     if (
@@ -121,6 +122,19 @@ export async function getLibrary(
       return;
     }
 
+    if (
+      favorite !== undefined &&
+      favorite !== "true" &&
+      favorite !== "false"
+    ) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid favorite filter",
+      });
+
+      return;
+    }
+
     const normalizedSearch =
       typeof search === "string"
         ? search.trim()
@@ -131,6 +145,11 @@ export async function getLibrary(
         ? sort
         : undefined;
 
+    const normalizedFavorite =
+      favorite === undefined
+        ? undefined
+        : favorite === "true";
+
     const library =
       await getUserLibrary(
         userId,
@@ -139,6 +158,7 @@ export async function getLibrary(
         normalizedSort as
           | LibrarySort
           | undefined,
+        normalizedFavorite,
       );
 
     res.json({
@@ -307,6 +327,7 @@ export async function updateLibrary(
       currentPage,
       startedAt,
       finishedAt,
+      isFavorite,
     } = req.body;
 
     if (
@@ -332,6 +353,17 @@ export async function updateLibrary(
         success: false,
         message:
           "currentPage must be a non-negative integer",
+      });
+      return;
+    }
+
+    if (
+      isFavorite !== undefined &&
+      typeof isFavorite !== "boolean"
+    ) {
+      res.status(400).json({
+        success: false,
+        message: "isFavorite must be a boolean",
       });
       return;
     }
@@ -376,6 +408,7 @@ export async function updateLibrary(
         currentPage,
         startedAt: parsedStartedAt,
         finishedAt: parsedFinishedAt,
+        isFavorite,
       });
 
     res.json({
@@ -418,6 +451,17 @@ export async function updateLibrary(
         success: false,
         message:
           "This book does not have a page count and cannot be marked as completed",
+      });
+      return;
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "FAVORITE_LIMIT_REACHED"
+    ) {
+      res.status(409).json({
+        success: false,
+        message: "You can have up to 10 favorite books",
       });
       return;
     }

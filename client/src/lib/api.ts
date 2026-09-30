@@ -219,6 +219,7 @@ export async function getUserLibrary(
   status?: ReadingStatus,
   search?: string,
   sort?: LibrarySort,
+  favorite?: boolean,
 ): Promise<LibraryEntry[]> {
   const searchParams = new URLSearchParams();
 
@@ -232,6 +233,13 @@ export async function getUserLibrary(
 
   if (sort) {
     searchParams.set("sort", sort);
+  }
+
+  if (favorite !== undefined) {
+    searchParams.set(
+      "favorite",
+      favorite.toString(),
+    );
   }
 
   const queryString = searchParams.toString();
@@ -264,6 +272,7 @@ export async function updateLibraryEntry(
     currentPage?: number;
     startedAt?: string | null;
     finishedAt?: string | null;
+    isFavorite?: boolean;
   },
 ): Promise<LibraryEntry> {
   const response = await fetch(

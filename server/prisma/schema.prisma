@@ -76,23 +76,21 @@ model Book {
 
 model LibraryEntry {
   id          String        @id @default(uuid())
-
   status      ReadingStatus @default(WANT_TO_READ)
   currentPage Int           @default(0)
-
   startedAt   DateTime?
   finishedAt  DateTime?
+  isFavorite  Boolean       @default(false)
   addedAt     DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-
+  updatedAt  DateTime       @updatedAt
   userId      String
   bookId      String
-
   user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   book        Book          @relation(fields: [bookId], references: [id], onDelete: Cascade)
 
   @@unique([userId, bookId])
   @@index([userId, status])
+  @@index([userId, isFavorite])
 }
 
 model Review {

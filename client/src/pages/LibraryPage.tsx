@@ -15,33 +15,53 @@ import type {
   ReadingStatus,
 } from "@/types/library";
 
-const shelves: {
-  label: string;
-  value: ReadingStatus | undefined;
-}[] = [
+type LibraryShelf =
+  | {
+      label: string;
+      type: "status";
+      value: ReadingStatus | undefined;
+    }
+  | {
+      label: string;
+      type: "favorite";
+      value: true;
+    };
+
+const shelves: LibraryShelf[] = [
   {
     label: "All",
+    type: "status",
     value: undefined,
   },
   {
     label: "Want to Read",
+    type: "status",
     value: "WANT_TO_READ",
   },
   {
     label: "Reading",
+    type: "status",
     value: "READING",
   },
   {
     label: "On Hold",
+    type: "status",
     value: "ON_HOLD",
   },
   {
     label: "Completed",
+    type: "status",
     value: "COMPLETED",
   },
   {
     label: "Dropped",
+    type: "status",
     value: "DROPPED",
+  },
+  {
+    label: "Favorites",
+    type: "favorite",
+    value: true,
   },
 ];
 
@@ -112,16 +132,18 @@ const emptyStates: Record<
     description:
       "Books you decide not to continue will appear here.",
   },
+  FAVORITES: {
+    title: "No favorite books yet.",
+    description:
+      "Books you mark as favorites will appear here.",
+  },
 };
 
 export default function LibraryPage() {
   const [library, setLibrary] =
     useState<LibraryEntry[]>([]);
 
-  const [activeShelf, setActiveShelf] =
-    useState<ReadingStatus | undefined>(
-      undefined,
-    );
+  const [activeShelf, setActiveShelf] = useState<LibraryShelf>(shelves[0]);
 
   const [searchInput, setSearchInput] =
     useState("");
@@ -135,7 +157,9 @@ export default function LibraryPage() {
     const [sort, setSort] = useState<LibrarySort>( "recently_updated",);
 
   const activeShelfKey =
-    activeShelf ?? "ALL";
+    activeShelf.type === "favorite"
+      ? "FAVORITES"
+      : activeShelf.value ?? "ALL";
 
   const emptyState =
     emptyStates[activeShelfKey];
@@ -164,9 +188,14 @@ export default function LibraryPage() {
 
         const data =
           await getUserLibrary(
-            activeShelf,
+            activeShelf.type === "status"
+              ? activeShelf.value
+              : undefined,
             search,
             sort,
+            activeShelf.type === "favorite"
+              ? true
+              : undefined,
           );
 
         if (isMounted) {
@@ -246,16 +275,16 @@ export default function LibraryPage() {
         <div className="mt-8 overflow-x-auto border-b border-white/[0.08]">
           <div className="flex min-w-max gap-7">
             {shelves.map((shelf) => {
-              const isActive =
-                activeShelf === shelf.value;
+                const isActive =
+                  activeShelf.label === shelf.label;
 
-              return (
-                <button
-                  key={shelf.label}
-                  type="button"
-                  onClick={() =>
-                    setActiveShelf(shelf.value)
-                  }
+                return (
+                  <button
+                    key={shelf.label}
+                    type="button"
+                    onClick={() =>
+                      setActiveShelf(shelf)
+                    }
                   className={`relative pb-4 text-sm transition-colors duration-300 ${
                     isActive
                       ? "text-[#f5f2ea]"
@@ -358,7 +387,7 @@ export default function LibraryPage() {
                   Clear search
                 </button>
               ) : (
-                activeShelf === undefined && (
+                activeShelf.type === "status" && activeShelf.value === undefined && (
                   <Link
                     to="/discover"
                     className="mt-5 text-xs font-medium text-[#c4a46a] transition-colors hover:text-[#d8bd83]"
