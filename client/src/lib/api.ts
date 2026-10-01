@@ -48,6 +48,26 @@ export interface User {
   avatarUrl?: string | null;
 }
 
+export interface ReadingSession {
+  id: string;
+
+  startedAt: string;
+  endedAt?: string | null;
+
+  durationMinutes?: number | null;
+
+  startPage?: number | null;
+  endPage?: number | null;
+  pagesRead?: number | null;
+
+  userId: string;
+  bookId: string;
+
+  createdAt: string;
+
+  book: Book;
+}
+
 interface ApiResponse<T> {
   success: boolean;
   data: T;
@@ -270,8 +290,6 @@ export async function updateLibraryEntry(
   data: {
     status?: ReadingStatus;
     currentPage?: number;
-    startedAt?: string | null;
-    finishedAt?: string | null;
     isFavorite?: boolean;
   },
 ): Promise<LibraryEntry> {
@@ -347,6 +365,126 @@ export async function getLibraryEntry(
   }
 
   return result.data;
+}
+
+export async function startReadingSession(
+  bookId: string,
+): Promise<ReadingSession> {
+  const response = await fetch(
+    `${API_URL}/reading-sessions`,
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+      },
+
+      credentials: "include",
+
+      body: JSON.stringify({
+        bookId,
+      }),
+    },
+  );
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ??
+        "Failed to start reading session",
+    );
+  }
+
+  return result.data;
+}
+
+export async function getActiveReadingSession(): Promise<
+  ReadingSession | null
+> {
+  const response = await fetch(
+    `${API_URL}/reading-sessions/active`,
+    {
+      credentials: "include",
+    },
+  );
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ??
+        "Failed to fetch active reading session",
+    );
+  }
+
+  return result.data;
+}
+
+export async function finishReadingSession(
+  sessionId: string,
+  endPage: number,
+): Promise<ReadingSession> {
+  const response = await fetch(
+    `${API_URL}/reading-sessions/${encodeURIComponent(
+      sessionId,
+    )}/finish`,
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+      },
+
+      credentials: "include",
+
+      body: JSON.stringify({
+        endPage,
+      }),
+    },
+  );
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ??
+        "Failed to finish reading session",
+    );
+  }
+
+  return result.data;
+}
+
+export async function discardReadingSession(
+  sessionId: string,
+): Promise<void> {
+  const response = await fetch(
+    `${API_URL}/reading-sessions/${encodeURIComponent(
+      sessionId,
+    )}`,
+    {
+      method: "DELETE",
+      credentials: "include",
+    },
+  );
+
+  if (response.status === 204) {
+    return;
+  }
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ??
+        "Failed to discard reading session",
+    );
+  }
 }
 
 export async function getCurrentUser(): Promise<User> {

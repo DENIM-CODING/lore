@@ -1,8 +1,11 @@
 import {
   ArrowLeft,
   Bookmark,
+  Clock3,
   Heart,
   MoreHorizontal,
+  Play,
+  Square,
   Star,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -19,12 +22,17 @@ import {
   removeBookFromLibrary,
   updateLibraryEntry,
   type Book,
+  type ReadingSession,
 } from "@/lib/api";
 
 import type {
   LibraryEntry,
   ReadingStatus,
 } from "@/types/library";
+
+import {
+  useReadingSession,
+} from "@/context/ReadingSessionContext";
 
 function formatReadingDate(
   date: string | null,
@@ -71,6 +79,19 @@ export default function BookPage() {
   const [isUpdatingFavorite, setIsUpdatingFavorite] = useState(false);
 
   const [moreOpen, setMoreOpen] = useState(false);
+
+  const [showFinishSession, setShowFinishSession] = useState(false);
+
+  const [finishPage, setFinishPage] = useState("");
+
+  const {
+    activeSession,
+    sessionLoading,
+    sessionActionLoading,
+    startSession,
+    finishSession,
+    discardSession,
+  } = useReadingSession();
 
   useEffect(() => {
     let isMounted = true;
@@ -146,11 +167,97 @@ export default function BookPage() {
     };
   }, [id, externalId]);
 
+//   useEffect(() => {
+//   let isMounted = true;
+
+//   async function loadActiveSession() {
+//     try {
+//       const session =
+//         await getActiveReadingSession();
+
+//       if (!isMounted) {
+//         return;
+//       }
+
+//       setActiveSession(session);
+//     } catch (error) {
+//       if (!isMounted) {
+//         return;
+//       }
+
+//       console.error(
+//         "Failed to load active reading session:",
+//         error,
+//       );
+//     } finally {
+//       if (isMounted) {
+//         setSessionLoading(false);
+//       }
+//     }
+//   }
+
+//   loadActiveSession();
+
+//   return () => {
+//     isMounted = false;
+//   };
+// }, []);
+
+  const isCurrentBookSession = activeSession?.bookId === book?.id;
+
+async function handleStartReadingSession() {
+  if (
+    !book ||
+    !libraryEntry ||
+    libraryEntry.status !== "READING" ||
+    sessionLoading ||
+    sessionActionLoading
+  ) {
+    return;
+  }
+
+  if (activeSession) {
+    setActionError(
+      activeSession.bookId === book.id
+        ? "A reading session is already active for this book."
+        : `You already have an active session for "${activeSession.book.title}".`,
+    );
+
+    return;
+  }
+
+  try {
+    setActionError(null);
+
+    await startSession(book.id);
+  } catch (error) {
+    console.error(
+      "Failed to start reading session:",
+      error,
+    );
+
+    setActionError(
+      error instanceof Error
+        ? error.message
+        : "Failed to start reading session",
+    );
+  }
+}
+
+
   async function handleRemoveFromLibrary() {
     if (
       !book ||
       !libraryEntry
     ) {
+      return;
+    }
+
+    if (isCurrentBookSession) {
+      setActionError(
+        "Finish or discard your active reading session before removing this book.",
+      );
+
       return;
     }
 
@@ -220,6 +327,124 @@ export default function BookPage() {
     }
   }
 
+async function handleFinishReadingSession() {
+  if (
+    !activeSession ||
+    !libraryEntry
+  ) {
+    return;
+  }
+
+  const parsedPage = Number(finishPage);
+
+  if (
+    !Number.isInteger(parsedPage) ||
+    parsedPage < 0
+  ) {
+    setActionError(
+      "Enter a valid ending page.",
+    );
+
+    return;
+  }
+
+  if (
+    book?.pageCount !== null &&
+    book?.pageCount !== undefined &&
+    parsedPage > book.pageCount
+  ) {
+    setActionError(
+      "Ending page cannot exceed the book's page count.",
+    );
+
+    return;
+  }
+
+  if (
+    activeSession.startPage != null &&
+    parsedPage < activeSession.startPage
+  ) {
+    setActionError(
+      "Ending page cannot be before the session start page.",
+    );
+
+    return;
+  }
+
+  try {
+    setActionError(null);
+
+    const finishedSession =
+      await finishSession(
+        activeSession.id,
+        parsedPage,
+      );
+
+    setShowFinishSession(false);
+    setFinishPage("");
+
+    if (finishedSession.endPage !== null) {
+      setLibraryEntry((current) =>
+        current
+          ? {
+              ...current,
+              currentPage:
+                finishedSession.endPage!,
+            }
+          : current,
+      );
+    }
+  } catch (error) {
+    console.error(
+      "Failed to finish reading session:",
+      error,
+    );
+
+    setActionError(
+      error instanceof Error
+        ? error.message
+        : "Failed to finish reading session",
+    );
+  }
+}
+
+
+async function handleDiscardReadingSession() {
+  if (!activeSession) {
+    return;
+  }
+
+  const confirmed =
+    window.confirm(
+      "Discard this reading session? Your reading time and pages from this session will not be saved.",
+    );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    setActionError(null);
+
+    await discardSession(
+      activeSession.id,
+    );
+
+    setShowFinishSession(false);
+    setFinishPage("");
+  } catch (error) {
+    console.error(
+      "Failed to discard reading session:",
+      error,
+    );
+
+    setActionError(
+      error instanceof Error
+        ? error.message
+        : "Failed to discard reading session",
+    );
+  }
+}
 
     async function handleStatusChange(
       status: ReadingStatus,
@@ -229,6 +454,17 @@ export default function BookPage() {
         isUpdatingStatus ||
         status === libraryEntry.status
       ) {
+        return;
+      }
+
+      if (
+        isCurrentBookSession &&
+        status !== "READING"
+      ) {
+        setActionError(
+          "Finish or discard your active reading session before changing the reading status.",
+        );
+
         return;
       }
 
@@ -478,7 +714,10 @@ export default function BookPage() {
                           event.target.value as ReadingStatus,
                         )
                       }
-                      disabled={isUpdatingStatus}
+                      disabled={
+                        isUpdatingStatus ||
+                        isCurrentBookSession
+                      }
                       aria-label="Reading status"
                       className="appearance-none rounded-xl border border-[#c4a46a]/20 bg-[#c4a46a]/10 px-6 py-3 pr-10 text-sm font-medium text-[#c4a46a] outline-none transition-all hover:border-[#c4a46a]/35 disabled:cursor-not-allowed disabled:opacity-60"
                     >
@@ -521,6 +760,52 @@ export default function BookPage() {
                       : "Add to library"}
                   </button>
                 )}
+
+                {libraryEntry?.status === "READING" ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isCurrentBookSession) {
+                        setShowFinishSession(true);
+
+                        setFinishPage(
+                          libraryEntry.currentPage.toString(),
+                        );
+
+                        return;
+                      }
+
+                      handleStartReadingSession();
+                    }}
+                    disabled={
+                      sessionLoading ||
+                      sessionActionLoading ||
+                      Boolean(
+                        activeSession &&
+                        !isCurrentBookSession,
+                      )
+                    }
+                    className={`flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-medium transition-all ${
+                      isCurrentBookSession
+                        ? "border border-[#c4a46a]/30 bg-[#c4a46a]/10 text-[#c4a46a] hover:bg-[#c4a46a]/15"
+                        : "bg-[#f5f2ea] text-[#11110f] hover:bg-white"
+                    } disabled:cursor-not-allowed disabled:opacity-50`}
+                  >
+                    {isCurrentBookSession ? (
+                      <>
+                        <Square className="size-3.5" />
+                        Session active
+                      </>
+                    ) : activeSession ? (
+                      "Another session active"
+                    ) : (
+                      <>
+                        <Play className="size-3.5 fill-current" />
+                        Start Reading
+                      </>
+                    )}
+                  </button>
+                ) : null}
 
                 <button
                   type="button"
@@ -597,6 +882,28 @@ export default function BookPage() {
                 </p>
               )}
             </div>
+
+            {isCurrentBookSession && activeSession ? (
+            <ActiveReadingSession
+              session={activeSession}
+              showFinishSession={showFinishSession}
+              finishPage={finishPage}
+              onFinishPageChange={setFinishPage}
+              onFinish={() => {
+                setActionError(null);
+                setShowFinishSession(true);
+
+                setFinishPage(
+                  libraryEntry?.currentPage.toString() ??
+                    activeSession.startPage?.toString() ??
+                    "0",
+                );
+              }}
+              onConfirmFinish={handleFinishReadingSession}
+              onDiscard={handleDiscardReadingSession}
+              isLoading={sessionActionLoading}
+            />
+          ) : null}
 
 
             {/* Reading progress */}
@@ -924,6 +1231,200 @@ function Meta({
       <p className="mt-2 truncate text-xs text-white/60">
         {value}
       </p>
+    </div>
+  );
+}
+
+
+function ActiveReadingSession({
+  session,
+  showFinishSession,
+  finishPage,
+  onFinishPageChange,
+  onFinish,
+  onConfirmFinish,
+  onDiscard,
+  isLoading,
+}: {
+  session: ReadingSession;
+  showFinishSession: boolean;
+  finishPage: string;
+  onFinishPageChange: (value: string) => void;
+  onFinish: () => void;
+  onConfirmFinish: () => void;
+  onDiscard: () => void;
+  isLoading: boolean;
+}) {
+  const [elapsedSeconds, setElapsedSeconds] =
+    useState(() =>
+      Math.max(
+        0,
+        Math.floor(
+          (Date.now() -
+            new Date(
+              session.startedAt,
+            ).getTime()) /
+            1000,
+        ),
+      ),
+    );
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setElapsedSeconds(
+        Math.max(
+          0,
+          Math.floor(
+            (Date.now() -
+              new Date(
+                session.startedAt,
+              ).getTime()) /
+              1000,
+          ),
+        ),
+      );
+    }, 1000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [session.startedAt]);
+
+  const hours = Math.floor(
+    elapsedSeconds / 3600,
+  );
+
+  const minutes = Math.floor(
+    (elapsedSeconds % 3600) / 60,
+  );
+
+  const seconds =
+    elapsedSeconds % 60;
+
+  const formattedTime =
+    hours > 0
+      ? `${hours}:${minutes
+          .toString()
+          .padStart(2, "0")}:${seconds
+          .toString()
+          .padStart(2, "0")}`
+      : `${minutes}:${seconds
+          .toString()
+          .padStart(2, "0")}`;
+
+  return (
+    <div className="mt-8 max-w-2xl overflow-hidden rounded-2xl border border-[#c4a46a]/20 bg-[#c4a46a]/[0.05]">
+      <div className="flex items-center justify-between gap-4 border-b border-white/[0.06] px-5 py-4">
+        <div className="flex items-center gap-3">
+          <div className="flex size-9 items-center justify-center rounded-xl bg-[#c4a46a]/10 text-[#c4a46a]">
+            <Clock3 className="size-4" />
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-white/85">
+              Reading session
+            </p>
+
+            <p className="mt-0.5 text-xs text-white/35">
+              Currently reading
+            </p>
+          </div>
+        </div>
+
+        <div className="font-mono text-lg tabular-nums text-[#c4a46a]">
+          {formattedTime}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 p-5">
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+          <p className="text-[10px] uppercase tracking-[0.16em] text-white/25">
+            Started at
+          </p>
+
+          <p className="mt-1.5 text-sm text-white/65">
+            {new Date(
+              session.startedAt,
+            ).toLocaleTimeString(
+              undefined,
+              {
+                hour: "numeric",
+                minute: "2-digit",
+              },
+            )}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+          <p className="text-[10px] uppercase tracking-[0.16em] text-white/25">
+            Starting page
+          </p>
+
+          <p className="mt-1.5 text-sm text-white/65">
+            {session.startPage ?? "—"}
+          </p>
+        </div>
+      </div>
+
+      {showFinishSession ? (
+        <div className="border-t border-white/[0.06] px-5 py-5">
+          <p className="text-sm font-medium text-white/80">
+            Finish reading session
+          </p>
+
+          <p className="mt-1 text-xs leading-5 text-white/35">
+            Enter the page you reached. Your session
+            duration and pages read will be saved.
+          </p>
+
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+            <input
+              type="number"
+              min={session.startPage ?? 0}
+              value={finishPage}
+              onChange={(event) =>
+                onFinishPageChange(
+                  event.target.value,
+                )
+              }
+              disabled={isLoading}
+              placeholder="Ending page"
+              className="min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-white/20 focus:border-[#c4a46a]/40"
+            />
+
+            <button
+              type="button"
+              onClick={onConfirmFinish}
+              disabled={isLoading}
+              className="rounded-xl bg-[#f5f2ea] px-5 py-3 text-sm font-medium text-[#11110f] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isLoading
+                ? "Saving..."
+                : "Finish Session"}
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={onDiscard}
+            disabled={isLoading}
+            className="mt-3 text-xs text-red-300/60 transition-colors hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Discard session
+          </button>
+        </div>
+      ) : (
+        <div className="border-t border-white/[0.06] px-5 py-4">
+          <button
+            type="button"
+            onClick={onFinish}
+            disabled={isLoading}
+            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm font-medium text-white/70 transition-colors hover:bg-white/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Finish Session
+          </button>
+        </div>
+      )}
     </div>
   );
 }

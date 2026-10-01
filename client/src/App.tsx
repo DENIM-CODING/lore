@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/context/AuthContext";
 import { Navbar } from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { ReadingSessionProvider } from "@/context/ReadingSessionContext";
 
 import AuthPage from "@/pages/AuthPage";
 import LandingPage from "@/pages/LandingPage";
@@ -76,7 +77,9 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <AppContent />
+        <ReadingSessionProvider>
+          <AppContent />
+        </ReadingSessionProvider>
       </BrowserRouter>
     </AuthProvider>
   );
