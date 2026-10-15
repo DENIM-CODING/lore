@@ -11,6 +11,7 @@ import {
 import { useEffect, useState } from "react";
 import {
   Link,
+  useNavigate,
   useParams,
 } from "react-router-dom";
 
@@ -83,6 +84,8 @@ export default function BookPage() {
   const [showFinishSession, setShowFinishSession] = useState(false);
 
   const [finishPage, setFinishPage] = useState("");
+
+  const navigate = useNavigate();
 
   const {
     activeSession,
@@ -230,6 +233,12 @@ async function handleStartReadingSession() {
     setActionError(null);
 
     await startSession(book.id);
+
+    if (externalId) {
+      navigate(`/book/${book.id}`, {
+        replace: true,
+      });
+    }
   } catch (error) {
     console.error(
       "Failed to start reading session:",

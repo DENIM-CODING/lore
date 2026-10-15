@@ -1,9 +1,14 @@
-import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
+import {
+  createBrowserRouter,
+  Outlet,
+  RouterProvider,
+  useLocation,
+} from "react-router-dom";
 
 import { AuthProvider } from "@/context/AuthContext";
+import { ReadingSessionProvider } from "@/context/ReadingSessionContext";
 import { Navbar } from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import { ReadingSessionProvider } from "@/context/ReadingSessionContext";
 
 import AuthPage from "@/pages/AuthPage";
 import LandingPage from "@/pages/LandingPage";
@@ -13,74 +18,78 @@ import BookPage from "@/pages/BookPage";
 import StatsPage from "@/pages/StatsPage";
 import ProfilePage from "@/pages/ProfilePage";
 import SettingsPage from "@/pages/SettingsPage";
+import { ReadingSessionNavigationLock } from "@/components/reading/ReadingSessionNavigationLock";
 
-function AppContent() {
+function AppLayout() {
   const location = useLocation();
-
   const isAuthPage = location.pathname === "/auth";
 
   return (
     <>
       {!isAuthPage && <Navbar />}
 
-      <Routes>
+      <ReadingSessionNavigationLock />
 
-        <Route path="/" element={<LandingPage />} />
-
-        <Route
-          path="/discover"
-          element={<DiscoverPage />}
-        />
-
-        <Route
-          path="/book/google/:externalId"
-          element={<BookPage />}
-        />
-
-        <Route
-          path="/book/:id"
-          element={<BookPage />}
-        />
-
-        <Route
-          path="/auth"
-          element={<AuthPage />}
-        />
-
-        <Route element={<ProtectedRoute />}>
-          <Route
-            path="/library"
-            element={<LibraryPage />}
-          />
-
-          <Route
-            path="/stats"
-            element={<StatsPage />}
-          />
-
-          <Route
-            path="/profile"
-            element={<ProfilePage />}
-          />
-
-          <Route
-            path="/settings"
-            element={<SettingsPage />}
-          />
-        </Route>
-      </Routes>
+      <Outlet />
     </>
   );
 }
 
+const router = createBrowserRouter([
+  {
+    element: <AppLayout />,
+    children: [
+      {
+        path: "/",
+        element: <LandingPage />,
+      },
+      {
+        path: "/discover",
+        element: <DiscoverPage />,
+      },
+      {
+        path: "/book/google/:externalId",
+        element: <BookPage />,
+      },
+      {
+        path: "/book/:id",
+        element: <BookPage />,
+      },
+      {
+        path: "/auth",
+        element: <AuthPage />,
+      },
+      {
+        element: <ProtectedRoute />,
+        children: [
+          {
+            path: "/library",
+            element: <LibraryPage />,
+          },
+          {
+            path: "/stats",
+            element: <StatsPage />,
+          },
+          {
+            path: "/profile",
+            element: <ProfilePage />,
+          },
+          {
+            path: "/settings",
+            element: <SettingsPage />,
+          },
+        ],
+      },
+    ],
+  },
+]);
+
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <ReadingSessionProvider>
-          <AppContent />
-        </ReadingSessionProvider>
-      </BrowserRouter>
+      <ReadingSessionProvider>
+        <RouterProvider router={router} />
+      </ReadingSessionProvider>
     </AuthProvider>
   );
 }
