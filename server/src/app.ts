@@ -4,6 +4,7 @@ import { prisma } from "./config/prisma.js";
 import bookRoutes from "./routes/book.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import libraryRoutes from "./routes/library.routes.js";
+import reviewRoutes from "./routes/review.routes.js";
 import readingSessionRoutes from "./routes/reading-session.routes.js";
 import cookieParser from "cookie-parser";
 
@@ -23,6 +24,7 @@ app.use("/api/books", bookRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/library", libraryRoutes);
 app.use("/api/reading-sessions",readingSessionRoutes);
+app.use("/api/reviews", reviewRoutes);
 
 app.get("/api/health", (_req, res) => {
   res.json({
